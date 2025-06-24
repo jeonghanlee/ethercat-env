@@ -1,0 +1,66 @@
+.PHONY: autoconf src_init src_autoconf
+
+autoconf: src_init src_autoconf
+	cd $(SRC_PATH) && ./configure $(ETHERCAT_OPTIONS) --prefix=$(INSTALL_LOCATION)
+
+src_init:
+	$(QUIET) cd $(SRC_PATH) && touch ChangeLog
+
+src_autoconf:
+	cd $(SRC_PATH) && autoreconf --force --install -v && ./configure $(ETHERCAT_OPTIONS) --prefix=$(INSTALL_LOCATION)
+
+
+.PHONY: autoconf build install uninstall clean build.modules install.modules uninstall.modules build.dkms add.dkms remove.dkms install.dkms uninstall.dkms
+
+# DO_MAKE in CONFIG_SRC
+#
+build:
+	$(DO_MAKE)
+
+install: build
+	$(DO_MAKE) install
+
+uninstall:
+	$(DO_MAKE) uninstall
+
+clean:
+	$(DO_MAKE) clean
+
+# Modules
+build.modules:
+	$(DO_MAKE) modules
+
+clean.modules:
+	$(DO_MAKE) clean
+
+install.modules:
+	$(DO_MAKE) modules install
+	$(QUIET) depmod -a
+
+uninstall.modules:
+	$(DO_MAKE) modules uninstall
+	$(QUIET) depmod -a
+
+# DKMS
+build.dkms:
+	$(DKMS) build -m $(MODULE_NAME) -v $(MODULE_VERSION)
+#	$(DKMS) build -m $(MODULE_NAME) -v $(MODULE_VERSION) --verbose
+
+add.dkms:
+	$(DKMS) add -m $(MODULE_NAME) -v $(MODULE_VERSION)
+
+remove.dkms:
+	$(DKMS) remove -m $(MODULE_NAME) -v $(MODULE_VERSION) --all
+
+
+install.dkms:
+	$(DKMS) install -m $(MODULE_NAME) -v $(MODULE_VERSION) --force
+	$(QUIET) depmod -a
+
+uninstall.dkms:
+	$(DKMS) uninstall -m $(MODULE_NAME) -v $(MODULE_VERSION)
+	$(QUIET) depmod -a
+
+
+
+

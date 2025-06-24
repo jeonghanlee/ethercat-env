@@ -1,18 +1,20 @@
 
-APPNAME:=env-template
+APPNAME:=ethercat
 
 ## Where the Source repository SRC_URL/SRC_NAME
 #
-SRC_URL:=https://github.com/jeonghanlee
+SRC_URL:=https://gitlab.com/jeonghanlee
 SRC_NAME:=${APPNAME}
 
-
 ## Which the source tag / branch / hash id would like to use
-# 2020-04-21
-SRC_TAG:=master
+# 2025-06-23
+SRC_TAG=ced654cb
 
-# Placeholder for the site-specific version control 
-SRC_VERSION:=master
+# Placeholder for the site-specific version control
+SRC_VERSION=${SRC_TAG}
+
+
+
 
 
 -include $(TOP)/../RELEASE.local

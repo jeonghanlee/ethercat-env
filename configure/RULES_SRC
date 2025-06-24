@@ -3,10 +3,10 @@
 
 .PHONY: help default init distclean deinit
 
-# # help is defined in 
+# # help is defined in
 # # https://gist.github.com/rcmachado/af3db315e31383502660
 help:
-	$(info --------------------------------------- )	
+	$(info --------------------------------------- )
 	$(info Make Targets)
 	$(info --------------------------------------- )
 	$(QUIET) awk '/^[a-zA-Z\-\_0-9]+:/ {            \
@@ -45,43 +45,5 @@ distclean:
 	$(call distclean, $(SRC_PATH))
 
 deinit: distclean
-
-### maven is used in other configuration
-.PHONY: info.mvn build.mvn conf.mvn mkdir.wars
-
-## JAVA/Maven Env
-info.mvn:
-	$(QUIET)echo "-------------------------------------------------------------"
-	$(QUIET)echo ">>> MAVEN  information"
-	$(QUIET)echo "Maven : $(MAVEN_PATH)/mvn"
-	$(QUIET)$(MAVEN_PATH)/mvn -version
-	$(QUIET)echo "-------------------------------------------------------------"
-	$(QUIET)echo ">>> JAVA information"
-	$(QUIET)echo "JAVA : $(JAVA_PATH)/java"
-	$(QUIET)$(JAVA_PATH)/java -version
-	$(QUIET)echo "-------------------------------------------------------------"
-
-## Build Source
-
-clean.mvn: info.mvn
-	$(QUIET) echo "JAVA_HOME=$(JAVA_HOME) $(MAVEN_CMD) $(MVN_OPTS) -f $(SRC_PATH) clean -Dmaven.test.skip=true"
-	$(QUIET) JAVA_HOME=$(JAVA_HOME) $(MAVEN_CMD) $(MVN_OPTS) -f $(SRC_PATH) clean -Dmaven.test.skip=true
-
-build.mvn: info.mvn | mkdir.wars
-	$(QUIET) JAVA_HOME=$(JAVA_HOME) $(MAVEN_CMD) $(MVN_OPTS) -f $(SRC_PATH) clean package -DwebappDirectory=$(WARS_TARGET) -Dmaven.test.skip=true
-
-
-mkdir.wars:
-	@mkdir -p $(APPNAME_WARS_TARGET_PATH)
-
-.PHONY: conf build clean conf.show
-
-build: conf build.mvn
-
-conf: conf.properties
-
-conf.show: conf.properties.show
-
-clean: clean.mvn
 
 

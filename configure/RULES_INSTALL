@@ -30,5 +30,3 @@ src_version.clean:
 
 FORCE:
 
-#reinstall: conf build install
-#restart: uninstall reinstall cf_start cf_status

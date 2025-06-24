@@ -1,52 +1,72 @@
 
 ### $APPNAME installation location
 INSTALL_PATH=/opt
-INSTALL_LOCATION=$(INSTALL_PATH)/pvwebsocket
+INSTALL_LOCATION=$(INSTALL_PATH)/$(APPNAME)
 
 
-APPNAME_TOP:=$(INSTALL_LOCATION)
-APPNAME_SITEID=ALS
-APPNAME_VERSION=$(SRC_VERSION)-$(APPNAME_SITEID)
-APPNAME_WARS_TARGET_PATH?=$(TOP)/$(SRC_PATH)/target
-APPFULLNAME="EPICS PV WebSocket"
+# Resume old file, and use it as a reference
+# WITH_PATCHSET:=NO
+
+# Device Options
+# option: --enable-generic        Enable generic Ethernet driver
+# option: --enable-8139too        Enable 8139too driver
+# option: --enable-e100           Enable e100 driver
+# option: --enable-e1000          Enable e1000 driver
+# option:  --enable-e1000e         Enable e1000e driver
+#       :  --enable-genet          Enable genet driver (for Raspi 4)
+# option:  --enable-igb            Enable igb driver
+#       :  --enable-igc            Enable igc driver
+# option:  --enable-r8169          Enable r8169 driver
+#       :  --enable-stmmac-pci     Enable stmmac driver
+#       : --enable-dwmac-intel    Enable stmmac driver
+# option: --enable-ccat           Enable CCAT driver
+#       : --enable-rtdm           Enable RTDM interface, depends on RTAI or Xenomai
+#       : --enable-debug-if       Create a debug interface for each master [NO]
+#       : --enable-debug-ring     Create a debug ring to record frames [NO]
+# option: --enable-eoe            Enable EoE support (default: yes)
+# option: --enable-cycles         Use CPU timestamp counter (default: no)
+# option: --enable-hrtimer        Use high-resolution timer for scheduling (default:
 
 
-WARS_TARGET?=$(APPNAME_WARS_TARGET_PATH)
+WITH_DEV_GENERIC:=YES
+#WITH_DEV_8139TOO:=NO
+#WITH_DEV_E100:=NO
+#WITH_DEV_E1000:=NO
+#WITH_DEV_E1000E:=NO
+#WITH_DEV_IGB:=NO
+WITH_DEV_R8169:=YES
+#WITH_DEV_CCAT:=NO
 
-MAVEN_OPTS:="-Dversion=$(APPNAME_VERSION)"
-MAVEN_OPTS+="-Dfile=$(APPNAME_WARS_TARGET_PATH)"
-#MAVEN_OPTS+="-Dtomcathome=/opt/tomcat9"
+ENABLE_STATIC:=YES
+ENABLE_SHARED:=YES
 
-# export JAVA_OPTS="-XX:MaxPermSize=128M -XX:+UseG1GC -Xmx4G -Xms4G -ea"
+# ENABLE_EOE:=NO
+# Intel Architecture
+ENABLE_CYCLES:=YES
+# ENABLE_HRTIMER:=NO
+ENABLE_REGALIAS:=NO
+
+
+#  --enable-regalias       Read alias adresses from register (default: no)
+#  --enable-tool           Build command-line tool (default: yes)
+#  --enable-userlib        Generation of the userspace library (default: yes)
+#  --enable-fakeuserlib    Generation of the userspace library (default: no)
+#  --enable-tty            Generation of the ec_tty module (default: no)
+#  --enable-wildcards      Enable vendor ID / product code wildcards (default: no)
+#  --enable-sii-assign     Enable SII assignment to PDI (default: yes)
+#  --enable-rt-syslog      Enable RT syslog (default: yes)
+#  --disable-initd         Disable /etc/init.d script support (default:  enabled)
+
+ENABLE_TOOL:=YES
+ENABLE_USERLIB:=YES
+ENABLE_SII_ASSIGN:=YES
+ENABLE_RT_SYSLOG:=YES
+
+
+# This is only valid when WITH_PATCHSET=YES
 #
-#  -XX:MaxPermSize=size  This option was deprecated in JDK 8, 
-#   and superseded by the -XX:MaxMetaspaceSize option.
-#
-# The physical memory  :  64G, so I use 8G instead of 4G, since we don't have any other application on the server.
-# Set MaxMetaspaceSize : 256M, so it reduces the GC execution to compare with the original option.
-JAVA_HEAPSIZE="512m"
-JAVA_MAXMETASPACE="256m"
-## https://stackoverflow.com/questions/58991966/what-java-security-egd-option-is-for
-# https://www.openssl.org/blog/blog/2017/08/12/random/
-JAVA_OPTS="-Djava.security.egd=file:/dev/./urandom"
-#
+# ENABLE_RTMUTEX:=NO
 
-USERID=tomcat
-GROUPID=$(USERID)
-
-# log4j_properties located in $(TOMCAT_HOME)/lib
-APPNAME_LOG4JPROPERTIES:=log4j.properties
-APPNAME_CONF=${APPNAME}.conf
-# $(INSTALL_LOCATION)/*/conf
-APPNAME_CONTEXT_XML:=context.xml
-APPNAME_TOMCAT_STARTUP:=startup.sh
-APPNAME_TOMCAT_SHUTDOWN:=shutdown.sh
-APPNAME_MAIN_SCRIPT:=${APPNAME}.bash
-
-APPNAME_SITE_TMEPLATE_PATH=$(TOP)/site-template
-
-SYSTEMD_PATH:=/etc/systemd/system
-SYSTEMD_FILENAME:=${APPNAME}.service
 
 # These allow developers to override the CONFIG_SITE variable
 # settings without having to modify the configure/CONFIG_SITE

@@ -5,7 +5,7 @@ INSTALL_PROGRAM:=$(INSTALL)
 INSTALL_DATA:=$(INSTALL) -m 644
 INSTALL_755:=$(INSTALL) -m 755
 
-# IF INSTALL_LOCATIOIN/.. is not WRITABLE, SUDO and SUDOBASH should be used 
+# IF INSTALL_LOCATIOIN/.. is not WRITABLE, SUDO and SUDOBASH should be used
 # SUDO_INFO 1 : SUDO is needed (NOT writable)
 # SUDO_INFO 0 : SUDO is not needed
 # There is no simple way to detect whether SUDO is needed to create INSTALL_LOCATION"
@@ -43,33 +43,8 @@ OS_VERSION:=$(strip $(shell grep -Po '^VERSION_ID=\K[^d].+' /etc/os-release | se
 OS_NAME:=$(strip $(shell grep -Po '^ID=\K[^S].+' /etc/os-release | sed 's/\"//g'))
 endif
 
+DO_MAKE:=make -C $(SRC_PATH)
 
-#
-#
-PATH:=$(MAVEN_PATH):$(JAVA_PATH):${PATH}
-#
-MAVEN_CMD?=$(MAVEN_PATH)/mvn
-JAVA_CMD?=$(JAVA_PATH)/java 
-#
-#https://en.wikipedia.org/wiki/List_of_TCP_and_UDP_port_numbers
-APPNAME_PVWS_PORT:=15577
-APPNAME_PVWS_SHUTDOWN_PORT:=-1
-
-APPNAME_SITEID_TARGET_PATH:=$(TOP)/$(SRC_PATH)/src/sitespecific/$(APPNAME_SITEID)
-
-CATALINA_OPTS="-XX:MaxMetaspaceSize=$(JAVA_MAXMETASPACE)"
-CATALINA_OPTS+="-Xms$(JAVA_HEAPSIZE)"
-CATALINA_OPTS+="-Xmx$(JAVA_HEAPSIZE)"
-CATALINA_OPTS+="-XX:+UseG1GC"
-CATALINA_OPTS+="-ea"
-# Service order is matter, don't change them
-
-APPNAME_SERVICES:=pvws
-INSTALL_LOCATION_SERVICES:=$(addprefix $(INSTALL_LOCATION)/, $(APPNAME_SERVICES))
-#APPNAME_UPPERCASE_SERVICES:=$(shell  echo "$(ARCHAPPL_SERVICES)" | tr '[:lower:]' '[:upper:]')
-#
-
-APPNAME_ROOT_LOGGER_LEVEL:=DEBUG
 
 VARS_EXCLUDES+=SRC_PATH_INFO
 VARS_EXCLUDES+=INSTALL
