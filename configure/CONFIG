@@ -6,6 +6,9 @@ UNAME_M:=$(shell uname -m)
 include $(TOP)/configure/RELEASE
 include $(TOP)/configure/CONFIG_SITE
 include $(TOP)/configure/CONFIG_ETHERCAT
+include $(TOP)/configure/CONFIG_MODULE
 include $(TOP)/configure/CONFIG_VARS
 include $(TOP)/configure/CONFIG_SRC
 
+include $(TOP)/configure/ethercatmaster.conf
+-include $(TOP)/ethercatmaster.local

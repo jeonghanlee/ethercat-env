@@ -1,0 +1,5 @@
+
+## Debian dkms path
+DKMS=/usr/sbin/dkms
+
+-include $(TOP)/configure/CONFIG_DKMS.local

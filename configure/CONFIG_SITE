@@ -3,7 +3,6 @@
 INSTALL_PATH=/opt
 INSTALL_LOCATION=$(INSTALL_PATH)/$(APPNAME)
 
-
 # Resume old file, and use it as a reference
 # WITH_PATCHSET:=NO
 
