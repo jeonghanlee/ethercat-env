@@ -1,0 +1,10 @@
+*.py.swp
+*.sw?
+__pycache__/
+*.log
+info_tags_ioc
+*.csv
+*.pyc
+conf.py
+*~
+.DS_Store

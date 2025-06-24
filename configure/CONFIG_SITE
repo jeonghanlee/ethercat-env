@@ -1,0 +1,55 @@
+
+### $APPNAME installation location
+INSTALL_PATH=/opt
+INSTALL_LOCATION=$(INSTALL_PATH)/pvwebsocket
+
+
+APPNAME_TOP:=$(INSTALL_LOCATION)
+APPNAME_SITEID=ALS
+APPNAME_VERSION=$(SRC_VERSION)-$(APPNAME_SITEID)
+APPNAME_WARS_TARGET_PATH?=$(TOP)/$(SRC_PATH)/target
+APPFULLNAME="EPICS PV WebSocket"
+
+
+WARS_TARGET?=$(APPNAME_WARS_TARGET_PATH)
+
+MAVEN_OPTS:="-Dversion=$(APPNAME_VERSION)"
+MAVEN_OPTS+="-Dfile=$(APPNAME_WARS_TARGET_PATH)"
+#MAVEN_OPTS+="-Dtomcathome=/opt/tomcat9"
+
+# export JAVA_OPTS="-XX:MaxPermSize=128M -XX:+UseG1GC -Xmx4G -Xms4G -ea"
+#
+#  -XX:MaxPermSize=size  This option was deprecated in JDK 8, 
+#   and superseded by the -XX:MaxMetaspaceSize option.
+#
+# The physical memory  :  64G, so I use 8G instead of 4G, since we don't have any other application on the server.
+# Set MaxMetaspaceSize : 256M, so it reduces the GC execution to compare with the original option.
+JAVA_HEAPSIZE="512m"
+JAVA_MAXMETASPACE="256m"
+## https://stackoverflow.com/questions/58991966/what-java-security-egd-option-is-for
+# https://www.openssl.org/blog/blog/2017/08/12/random/
+JAVA_OPTS="-Djava.security.egd=file:/dev/./urandom"
+#
+
+USERID=tomcat
+GROUPID=$(USERID)
+
+# log4j_properties located in $(TOMCAT_HOME)/lib
+APPNAME_LOG4JPROPERTIES:=log4j.properties
+APPNAME_CONF=${APPNAME}.conf
+# $(INSTALL_LOCATION)/*/conf
+APPNAME_CONTEXT_XML:=context.xml
+APPNAME_TOMCAT_STARTUP:=startup.sh
+APPNAME_TOMCAT_SHUTDOWN:=shutdown.sh
+APPNAME_MAIN_SCRIPT:=${APPNAME}.bash
+
+APPNAME_SITE_TMEPLATE_PATH=$(TOP)/site-template
+
+SYSTEMD_PATH:=/etc/systemd/system
+SYSTEMD_FILENAME:=${APPNAME}.service
+
+# These allow developers to override the CONFIG_SITE variable
+# settings without having to modify the configure/CONFIG_SITE
+# file itself.
+-include $(TOP)/../CONFIG_SITE.local
+-include $(TOP)/configure/CONFIG_SITE.local

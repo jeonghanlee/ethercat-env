@@ -1,0 +1,15 @@
+# 
+#
+#Throttle-latest period in milliseconds (default: 1000).
+PV_THROTTLE_MS?=1000
+#
+# for arrary (default: 10000
+PV_ARRAY_THROTTLE_MS?=10000
+#
+# Set to `true` to enable writing (default: false).
+PV_WRITE_SUPPORT=false
+#
+# These allow developers to override the variable
+-include $(TOP)/../CONFIG_APPNAME.local
+-include $(TOP)/configure/CONFIG_APPNAME.local
+

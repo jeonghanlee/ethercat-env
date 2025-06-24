@@ -1,0 +1,16 @@
+
+JAVA_HOME:=/usr/lib/jvm/default-java
+MAVEN_HOME:=/usr/share/maven
+TOMCAT_HOME:=/usr/share/tomcat9
+
+JAVA_PATH:=$(JAVA_HOME)/bin
+MAVEN_PATH:=$(MAVEN_HOME)/bin
+
+
+# These allow developers to override the variable
+-include $(TOP)/../CONFIG_COMMON.local
+-include $(TOP)/configure/CONFIG_COMMON.local
+-include $(TOP)/configure/CONFIG_COMMON_JDK.local
+-include $(TOP)/configure/CONFIG_COMMON_ANT.local
+-include $(TOP)/configure/CONFIG_COMMON_MAVEN.local
+

@@ -1,0 +1,34 @@
+.PHONY: install uninstall src_install src_uninstall
+
+install: src_install
+uninstall: src_uninstall
+
+
+src_install: src_version src_preinst
+	$(QUIET)$(SUDO) install -d $(INSTALL_LOCATION)
+	$(QUIET)$(SUDO) $(INSTALL_DATA) -b $(SITE_TEMPLATE_PATH)/.versions  $(INSTALL_LOCATION)/
+	$(QUIET)$(SUDO)	chown -R $(USERID):$(GROUPID) $(INSTALL_LOCATION)
+
+src_uninstall: sd_stop sd_disable sd_clean src_postrm src_version_clean
+	$(QUIET)echo "Removing $(INSTALL_LOCATION)..."
+	$(QUIET)$(SUDO) rm -rf $(INSTALL_LOCATION)/
+
+.PHONY: src_version src_version.show src_version.clean
+
+src_version: FORCE
+	$(QUIET)printf ">> Timestamps       : YYYYMMDD-HHMMSS (%s)\n" "$$(date +%Y%m%d-%H%M%S)" > $(SITE_TEMPLATE_PATH)/.versions
+	$(QUIET)printf ">> SRC REMOTE URL   : %s\n" "$(SRC_GITURL)"  >> $(SITE_TEMPLATE_PATH)/.versions
+	$(QUIET)printf ">> SRC SITE VERSION : %s\n" "$(SRC_TAG)"     >> $(SITE_TEMPLATE_PATH)/.versions
+	$(QUIET)printf ">> SRC GIT  VERSION : "                      >> $(SITE_TEMPLATE_PATH)/.versions
+	$(QUIET)cd $(SRC_PATH) && git describe --tags                >> $(SITE_TEMPLATE_PATH)/.versions
+
+src_version.show:
+	$(QUIET)cat -b $(SITE_TEMPLATE_PATH)/.versions
+
+src_version.clean:
+	rm -rf $(SITE_TEMPLATE_PATH)/.versions
+
+FORCE:
+
+#reinstall: conf build install
+#restart: uninstall reinstall cf_start cf_status

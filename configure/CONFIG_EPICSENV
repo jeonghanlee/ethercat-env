@@ -1,0 +1,35 @@
+# 
+# https://raw.githubusercontent.com/ornl-epics/pvws/main/README.md
+#
+# Don't need to use ", please see the examples below
+EPICS_CA_ADDR_LIST?=localhost
+# EPICS_CA_ADDR_LIST=localhost 10.0.0.100:100000
+# EPICS_CA_ADDR_LIST=1.2.3.255 4.5.6.255:10000
+# 1.2.3.255 : default to EPICS_CA_SERVER_PORT
+# 4.5.6.255 : EPICS_CA_SERVER_PORT=10000 in Server (Note that Arachappl is a client.)
+#
+# YES or NO
+EPICS_CA_AUTO_ADDR_LIST?=YES
+#
+# CA array size: it determines the maximum array that it will send or receive.
+# 16384 byte network  buffers
+EPICS_CA_MAX_ARRAY_BYTES?=16384
+#
+# PV Access settings
+# Space-separated list of host names or IP addresses. Each may be followed by ":port", otherwise defaulting to EPICS_PVA_BROADCAST_PORT. When empty, local subnet is used.
+EPICS_PVA_ADDR_LIST?=
+# YES (default) or NO
+EPICS_PVA_AUTO_ADDR_LIST?=YES
+# Port used for name searches, defaults to 5076.
+EPICS_PVA_BROADCAST_PORT?=5076
+# Space-separated list of TCP name servers, provided as IP address followed by optional ":port". 
+# Client will connect to each address and send name searches before using the EPICS_PVA_ADDR_LIST for UDP searches. 
+# Set EPICS_PVA_ADDR_LIST to empty and EPICS_PVA_AUTO_ADDR_LIST=NO to use only the TCP name servers and avoid all UDP traffic.
+EPICS_PVA_NAME_SERVERS?=
+
+
+# These allow developers to override the CONFIG_EPICSENV variable
+# settings without having to modify the configure/CONFIG_EPICSENV
+# file itself.
+-include $(TOP)/../CONFIG_EPICSENV.local
+-include $(TOP)/configure/CONFIG_EPICSENV.local

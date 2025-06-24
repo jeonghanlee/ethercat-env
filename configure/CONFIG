@@ -1,0 +1,15 @@
+VARS_EXCLUDES := $(.VARIABLES)
+
+UNAME_S:=$(shell uname -s)
+UNAME_M:=$(shell uname -m)
+
+include $(TOP)/configure/CONFIG_COMMON
+include $(TOP)/configure/RELEASE
+include $(TOP)/configure/CONFIG_SITE
+include $(TOP)/configure/CONFIG_EPICSENV
+include $(TOP)/configure/CONFIG_SYSTEMD
+include $(TOP)/configure/CONFIG_APPNAME
+include $(TOP)/configure/CONFIG_VARS
+include $(TOP)/configure/CONFIG_SRC
+include $(TOP)/configure/CONFIG_TOMCAT
+
