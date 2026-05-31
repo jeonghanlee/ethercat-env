@@ -1,0 +1,25 @@
+# CONFIG_DOCTOR — expected host tool inventory for the doctor target.
+#
+# This file declares only variable surface (tool names and the required set);
+# the probing recipe lives in RULES_DOCTOR. No tool is installed here.
+
+# Tool command names the doctor probes for on PATH (or absolute path).
+DOCTOR_TOOL_autoreconf := autoreconf
+DOCTOR_TOOL_depmod     := depmod
+DOCTOR_TOOL_dkms       := $(DKMS)
+DOCTOR_TOOL_update_grub:= update-grub
+DOCTOR_TOOL_systemctl  := systemctl
+DOCTOR_TOOL_udevadm    := udevadm
+DOCTOR_TOOL_ldconfig   := ldconfig
+DOCTOR_TOOL_git        := git
+DOCTOR_TOOL_make       := make
+
+# The set of tools the bare "doctor" target treats as REQUIRED. A missing
+# member here makes "doctor" exit non-zero (fail-closed). Scoped sub-doctors
+# may require narrower subsets in later milestones.
+DOCTOR_REQUIRED := autoreconf depmod dkms systemctl udevadm ldconfig git make
+
+# Expected kernel-headers location for the running kernel (probed read-only).
+DOCTOR_KERNEL_HEADERS := /lib/modules/$(shell uname -r)/build
+
+-include $(TOP)/configure/CONFIG_DOCTOR.local

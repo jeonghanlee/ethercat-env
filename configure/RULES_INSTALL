@@ -4,18 +4,25 @@ install: src_install
 uninstall: src_uninstall
 
 
-src_install: src_version src_preinst
+# src_preinst is re-introduced as a real target in a later milestone (M10);
+# it is intentionally not a prerequisite here so the install graph resolves.
+src_install: src_version
+	$(QUIET)$(call guard-path,$(INSTALL_LOCATION))
 	$(QUIET)$(SUDO) install -d $(INSTALL_LOCATION)
 	$(QUIET)$(SUDO) $(INSTALL_DATA) -b $(SITE_TEMPLATE_PATH)/.versions  $(INSTALL_LOCATION)/
 	$(QUIET)$(SUDO)	chown -R $(USERID):$(GROUPID) $(INSTALL_LOCATION)
 
-src_uninstall: sd_stop sd_disable sd_clean src_postrm src_version_clean
+# sd_stop/sd_disable/sd_clean (M10) and src_postrm (M13) return as real targets
+# in later milestones, wired through the aggregator rather than dangling here.
+src_uninstall: src_version.clean
 	$(QUIET)echo "Removing $(INSTALL_LOCATION)..."
+	$(QUIET)$(call guard-path,$(INSTALL_LOCATION))
 	$(QUIET)$(SUDO) rm -rf $(INSTALL_LOCATION)/
 
 .PHONY: src_version src_version.show src_version.clean
 
 src_version: FORCE
+	$(QUIET)$(call guard-path,$(SITE_TEMPLATE_PATH))
 	$(QUIET)printf ">> Timestamps       : YYYYMMDD-HHMMSS (%s)\n" "$$(date +%Y%m%d-%H%M%S)" > $(SITE_TEMPLATE_PATH)/.versions
 	$(QUIET)printf ">> SRC REMOTE URL   : %s\n" "$(SRC_GITURL)"  >> $(SITE_TEMPLATE_PATH)/.versions
 	$(QUIET)printf ">> SRC SITE VERSION : %s\n" "$(SRC_TAG)"     >> $(SITE_TEMPLATE_PATH)/.versions
@@ -26,6 +33,7 @@ src_version.show:
 	$(QUIET)cat -b $(SITE_TEMPLATE_PATH)/.versions
 
 src_version.clean:
+	$(QUIET)$(call guard-path,$(SITE_TEMPLATE_PATH))
 	rm -rf $(SITE_TEMPLATE_PATH)/.versions
 
 FORCE:

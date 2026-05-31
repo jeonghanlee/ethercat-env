@@ -1,0 +1,74 @@
+# RULES_DOCTOR — host/tool doctor target and reusable safety guard macros.
+#
+# Loaded early in the RULES aggregator so guard-path / require-root are defined
+# before any later module references them. The doctor target is read-only: it
+# probes for tools and reports presence, never installing anything.
+
+.PHONY: doctor
+
+# doctor is wired as a NORMAL prerequisite of root-affecting targets in later
+# milestones; its recipe exits non-zero on any missing required tool so a
+# root-affecting recipe never starts on an under-provisioned host.
+## Verify every REQUIRED host tool exists and is executable (fail-closed)
+doctor:
+	$(QUIET)PATH="$$PATH:/usr/local/sbin:/usr/sbin:/sbin"; missing=""; \
+	for entry in \
+		autoreconf:$(DOCTOR_TOOL_autoreconf) \
+		depmod:$(DOCTOR_TOOL_depmod) \
+		dkms:$(DOCTOR_TOOL_dkms) \
+		systemctl:$(DOCTOR_TOOL_systemctl) \
+		udevadm:$(DOCTOR_TOOL_udevadm) \
+		ldconfig:$(DOCTOR_TOOL_ldconfig) \
+		git:$(DOCTOR_TOOL_git) \
+		make:$(DOCTOR_TOOL_make); do \
+		name="$${entry%%:*}"; cmd="$${entry#*:}"; \
+		if command -v "$$cmd" >/dev/null 2>&1; then \
+			printf "doctor: present  %-12s (%s)\n" "$$name" "$$(command -v "$$cmd")"; \
+		else \
+			printf "doctor: MISSING  %-12s (%s)\n" "$$name" "$$cmd" >&2; \
+			missing="$$missing $$name"; \
+		fi; \
+	done; \
+	if [ -n "$$missing" ]; then \
+		printf "doctor: FAIL — missing required tools:%s\n" "$$missing" >&2; \
+		exit 1; \
+	fi; \
+	printf "doctor: OK — all required tools present\n"
+
+# guard-path PATHVAR
+# Assert a path variable is non-empty and absolute before any rm -rf or write.
+# Usage as the first recipe line of a path-affecting target:
+#     $(call guard-path,$(SITE_TEMPLATE_PATH))
+# FAIL-CLOSED: an empty or non-absolute value aborts before the destructive
+# command is reached.
+define guard-path
+	p="$(1)"; \
+	if [ -z "$$p" ]; then \
+		printf "guard-path: FAIL — path is empty (fail-closed)\n" >&2; exit 1; \
+	fi; \
+	case "$$p" in \
+		/ | // | ///) printf "guard-path: FAIL — refuses filesystem root: %s (fail-closed)\n" "$$p" >&2; exit 1;; \
+	esac; \
+	case "$$p" in \
+		/*) : ;; \
+		*) printf "guard-path: FAIL — path is not absolute: %s\n" "$$p" >&2; exit 1;; \
+	esac; \
+	printf "guard-path: OK — %s\n" "$$p"
+endef
+
+# require-root
+# Run as the FIRST recipe line of every root-affecting target. Asserts the
+# operation has the privilege it needs, or is routed through $(SUDO).
+# FAIL-CLOSED: when not root and no SUDO is configured, abort before any change.
+define require-root
+	if [ "$$(id -u)" -ne 0 ] && [ -z "$(SUDO)" ]; then \
+		printf "require-root: FAIL — root privilege required and no SUDO configured (fail-closed)\n" >&2; \
+		exit 1; \
+	fi; \
+	printf "require-root: OK\n"
+endef
+
+VARS_EXCLUDES+=guard-path
+VARS_EXCLUDES+=require-root
+
+-include $(TOP)/configure/RULES_DOCTOR.local

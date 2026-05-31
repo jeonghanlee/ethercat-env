@@ -1,0 +1,26 @@
+# RULES_DRYRUN — uniform dry-run entry point and structural target listing.
+#
+# This is a thin, non-root inspection layer. Nothing here mutates host state
+# or the source tree; it only re-invokes make in dry-run mode or prints the
+# structural target graph for review.
+
+.PHONY: targets
+
+# Re-invoke make in dry-run mode for any target: "make <name>.dryrun" is
+# equivalent to "make --dry-run <name>". The stem ($*) is the wrapped target.
+%.dryrun:
+	$(QUIET) $(MAKE) --dry-run $*
+
+## List the structural target graph grouped by phase
+targets:
+	$(info --------------------------------------- )
+	$(info Structural Target Graph (by phase) )
+	$(info --------------------------------------- )
+	$(info acquire   : init clone update )
+	$(info configure : autoconf src_init src_autoconf )
+	$(info build     : build build.install build.uninstall build.modules )
+	$(info install   : install src_install src_version )
+	$(info runtime   : )
+	$(info remove    : uninstall src_uninstall src_version.clean distclean deinit )
+	$(info dry-run   : <name>.dryrun targets )
+	@:

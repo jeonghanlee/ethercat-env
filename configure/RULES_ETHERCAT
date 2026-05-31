@@ -10,17 +10,21 @@ src_autoconf:
 	cd $(SRC_PATH) && autoreconf --force --install -v && ./configure $(ETHERCAT_OPTIONS) --prefix=$(INSTALL_LOCATION)
 
 
-.PHONY: autoconf build install uninstall clean build.modules install.modules uninstall.modules build.dkms add.dkms remove.dkms install.dkms uninstall.dkms
+.PHONY: autoconf build build.install build.uninstall clean build.modules install.modules uninstall.modules build.dkms add.dkms remove.dkms install.dkms uninstall.dkms
 
 # DO_MAKE in CONFIG_SRC
 #
 build:
 	$(DO_MAKE)
 
-install: build
+# Upstream "make install" wrapper. Renamed from a bare "install" so it no
+# longer collides with the prefix-tree installer in RULES_INSTALL.
+build.install: build
 	$(DO_MAKE) install
 
-uninstall:
+# Upstream "make uninstall" wrapper. Renamed from a bare "uninstall" so it no
+# longer collides with the prefix-tree uninstaller in RULES_INSTALL.
+build.uninstall:
 	$(DO_MAKE) uninstall
 
 clean:

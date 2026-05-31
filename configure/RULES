@@ -1,9 +1,11 @@
 vpath %.local $(TOP)/configure
 
 include $(TOP)/configure/RULES_FUNC
+include $(TOP)/configure/RULES_DOCTOR
 include $(TOP)/configure/RULES_PATCH
 include $(TOP)/configure/RULES_SRC
 include $(TOP)/configure/RULES_ETHERCAT
 include $(TOP)/configure/RULES_INSTALL
+include $(TOP)/configure/RULES_DRYRUN
 include $(TOP)/configure/RULES_VARS
 

@@ -7,6 +7,7 @@ include $(TOP)/configure/RELEASE
 include $(TOP)/configure/CONFIG_SITE
 include $(TOP)/configure/CONFIG_ETHERCAT
 include $(TOP)/configure/CONFIG_MODULE
+include $(TOP)/configure/CONFIG_DOCTOR
 include $(TOP)/configure/CONFIG_VARS
 include $(TOP)/configure/CONFIG_SRC
 

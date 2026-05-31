@@ -3,6 +3,10 @@
 INSTALL_PATH=/opt
 INSTALL_LOCATION=$(INSTALL_PATH)/$(APPNAME)
 
+### Installed-file ownership (override in CONFIG_SITE.local)
+USERID:=$(shell id -un)
+GROUPID:=$(shell id -gn)
+
 # Resume old file, and use it as a reference
 # WITH_PATCHSET:=NO
 

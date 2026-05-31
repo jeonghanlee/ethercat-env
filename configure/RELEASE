@@ -9,8 +9,20 @@ SRC_NAME:=${APPNAME}
 ## Which source tag, branch, or hash id to use
 SRC_TAG:=stable-1.6
 
+# Pinned expected revision of the moving stable-1.6 branch.
+# "git -C $(SRC_PATH) describe --tags" must report this for src.verify to pass.
+# If upstream advances the branch, src.verify fails by design; bump this
+# consciously rather than letting the pin drift silently.
+SRC_HASH:=1.6.9-4-g46cc20e6
+
 # Placeholder for the site-specific version control
 SRC_VERSION=${SRC_TAG}
+
+# Repository-local default for the .versions staging path. Must be non-empty
+# and absolute (guard-path enforces this) so the .versions write never lands
+# at the filesystem root. A site override may point this elsewhere via
+# RELEASE.local.
+SITE_TEMPLATE_PATH:=$(TOP)
 
 
 -include $(TOP)/../RELEASE.local

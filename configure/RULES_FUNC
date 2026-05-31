@@ -39,6 +39,25 @@ define checkfile
 $(if $(wildcard $(1)), @echo "There is no source path at $(1).",@echo ">>> Found exist$(1) will be deleted." && rm -f $(1) )
 endef
 
+# verify_revision EXPECTED PATH
+# Assert the checked-out revision at PATH ($1=expected SRC_HASH, $2=SRC_PATH)
+# matches the pinned EXPECTED value. FAIL-CLOSED: an empty expected value or an
+# empty observed revision is treated as a mismatch, never as a pass.
+define verify_revision
+	expected="$(1)"; \
+	observed="$$(git -C $(2) describe --tags 2>/dev/null)"; \
+	if [ -z "$$expected" ]; then \
+		printf "src.verify: FAIL — SRC_HASH is empty (fail-closed)\n" >&2; exit 1; \
+	fi; \
+	if [ -z "$$observed" ]; then \
+		printf "src.verify: FAIL — observed revision is empty at %s (fail-closed)\n" "$(2)" >&2; exit 1; \
+	fi; \
+	if [ "$$expected" != "$$observed" ]; then \
+		printf "src.verify: FAIL — expected %s but observed %s\n" "$$expected" "$$observed" >&2; exit 1; \
+	fi; \
+	printf "src.verify: OK — revision %s matches SRC_HASH\n" "$$observed"
+endef
+
 
 ifndef VERBOSE
   QUIET := @
@@ -60,4 +79,5 @@ VARS_EXCLUDES+=gitclone
 VARS_EXCLUDES+=gitclone2
 VARS_EXCLUDES+=distclean
 VARS_EXCLUDES+=checkfile
+VARS_EXCLUDES+=verify_revision
 
