@@ -1,0 +1,133 @@
+# RULES_RUNTIME — runtime ethercat.conf generator, lint, and NIC status (M9).
+#
+# runtime.generate renders templates/ethercat.conf.in into a REPOSITORY-LOCAL
+# output path. It never writes to /etc/ethercat.conf; installation into /etc is
+# an M10 root-affecting concern, kept out of this file. Generation, lint, config
+# show, and iface.status are all non-root.
+#
+# iface.prepare is the root-affecting NIC up/down target. It is wired to require
+# doctor + require-root and is declared here, but its actual execution belongs to
+# the later root-affecting phase. On this non-root, no-host-mutation pass it
+# refuses to act on an empty/unresolved interface and depends on doctor.
+#
+# Data flow
+# ---------
+#   configure/ethercatmaster.conf : ETHERCAT_MASTER0 (master interface name)
+#   selected profile (WITH_DEV_*)  : enabled drivers -> DEVICE_MODULES
+#   -> templates/ethercat.conf.in  -> $(RUNTIME_OUTPUT)  (repo-local)
+
+.PHONY: runtime.generate runtime.lint runtime.config.show iface.status iface.prepare
+
+# Repo-local render target. NEVER /etc. Overridable via RULES_RUNTIME.local.
+RUNTIME_TEMPLATE ?= $(TOP)/templates/ethercat.conf.in
+RUNTIME_BUILD    ?= $(TOP)/build
+RUNTIME_OUTPUT   ?= $(RUNTIME_BUILD)/ethercat.conf
+
+# Resolved master interface name, quotes stripped from ETHERCAT_MASTER0.
+RUNTIME_MASTER0  := $(patsubst "%",%,$(ETHERCAT_MASTER0))
+RUNTIME_BACKUP   ?=
+# Interfaces brought up/down track the master interface by default.
+RUNTIME_UPDOWN   ?= $(RUNTIME_MASTER0)
+
+# DEVICE_MODULES: the enabled WITH_DEV_* drivers, in profile order. Each token is
+# emitted only when its selector resolves to YES.
+RUNTIME_MODULES :=
+ifeq ($(WITH_DEV_GENERIC),YES)
+RUNTIME_MODULES += generic
+endif
+ifeq ($(WITH_DEV_8139TOO),YES)
+RUNTIME_MODULES += 8139too
+endif
+ifeq ($(WITH_DEV_E100),YES)
+RUNTIME_MODULES += e100
+endif
+ifeq ($(WITH_DEV_E1000),YES)
+RUNTIME_MODULES += e1000
+endif
+ifeq ($(WITH_DEV_E1000E),YES)
+RUNTIME_MODULES += e1000e
+endif
+ifeq ($(WITH_DEV_IGB),YES)
+RUNTIME_MODULES += igb
+endif
+ifeq ($(WITH_DEV_R8169),YES)
+RUNTIME_MODULES += r8169
+endif
+ifeq ($(WITH_DEV_CCAT),YES)
+RUNTIME_MODULES += ccat
+endif
+
+## Render ethercat.conf from the template into the repo-local build path
+runtime.generate:
+	$(QUIET)if [ ! -f "$(RUNTIME_TEMPLATE)" ]; then \
+		printf "runtime.generate: FAIL — template not found: %s\n" "$(RUNTIME_TEMPLATE)" >&2; exit 1; \
+	fi
+	$(QUIET)mkdir -p "$(RUNTIME_BUILD)"
+	$(QUIET)sed \
+		-e 's|@MASTER0_DEVICE@|$(RUNTIME_MASTER0)|g' \
+		-e 's|@MASTER0_BACKUP@|$(RUNTIME_BACKUP)|g' \
+		-e 's|@DEVICE_MODULES@|$(strip $(RUNTIME_MODULES))|g' \
+		-e 's|@UPDOWN_INTERFACES@|$(strip $(RUNTIME_UPDOWN))|g' \
+		"$(RUNTIME_TEMPLATE)" > "$(RUNTIME_OUTPUT)"
+	$(QUIET)printf "runtime.generate: OK — wrote %s\n" "$(RUNTIME_OUTPUT)"
+
+## Validate the generated config: required keys present and non-empty master
+runtime.lint:
+	$(QUIET)out="$(RUNTIME_OUTPUT)"; \
+	if [ ! -f "$$out" ]; then \
+		printf "runtime.lint: FAIL — generated config not found: %s (run runtime.generate)\n" "$$out" >&2; exit 1; \
+	fi; \
+	fail=""; \
+	for key in MASTER0_DEVICE DEVICE_MODULES UPDOWN_INTERFACES; do \
+		if ! grep -q "^$$key=" "$$out"; then \
+			fail="$$fail $$key(missing)"; \
+		fi; \
+	done; \
+	master="$$(sed -n 's/^MASTER0_DEVICE="\(.*\)"$$/\1/p' "$$out")"; \
+	if [ -z "$$master" ]; then \
+		fail="$$fail MASTER0_DEVICE(empty)"; \
+	fi; \
+	if [ -n "$$fail" ]; then \
+		printf "runtime.lint: FAIL —%s\n" "$$fail" >&2; exit 1; \
+	fi; \
+	printf "runtime.lint: OK — required keys present, master device=%s\n" "$$master"
+
+## Print the generated ethercat.conf (read-only)
+runtime.config.show:
+	$(QUIET)out="$(RUNTIME_OUTPUT)"; \
+	if [ ! -f "$$out" ]; then \
+		printf "runtime.config.show: no generated config at %s (run runtime.generate)\n" "$$out" >&2; exit 1; \
+	fi; \
+	printf "# %s\n" "$$out"; \
+	cat "$$out"
+
+## Report the resolved master interface name and its current link state (read-only)
+iface.status:
+	$(QUIET)PATH="$$PATH:/usr/sbin:/sbin"; iface="$(RUNTIME_MASTER0)"; \
+	if [ -z "$$iface" ]; then \
+		printf "iface.status: no master interface resolved (ETHERCAT_MASTER0 empty)\n"; exit 0; \
+	fi; \
+	printf "iface.status: master interface = %s\n" "$$iface"; \
+	if command -v ip >/dev/null 2>&1 && ip link show "$$iface" >/dev/null 2>&1; then \
+		state="$$(ip -o link show "$$iface" | sed -n 's/.*state \([A-Z]*\).*/\1/p')"; \
+		printf "iface.status: link state = %s\n" "$$state"; \
+	else \
+		printf "iface.status: link state = unknown (interface absent or ip unavailable)\n"; \
+	fi
+
+# iface.prepare — root-affecting NIC up/down for the selected-profile interface.
+# Declared here with doctor + require-root wired in; actual up/down execution is
+# deferred to the later root-affecting phase. On this non-root pass the recipe
+# fails closed before any mutation if the interface name is empty/unresolved.
+## Bring the selected-profile NIC up/down (root-affecting; doctor + require-root)
+iface.prepare: doctor
+	$(QUIET)$(call require-root)
+	$(QUIET)iface="$(RUNTIME_MASTER0)"; \
+	if [ -z "$$iface" ]; then \
+		printf "iface.prepare: FAIL — no interface resolved (ETHERCAT_MASTER0 empty, fail-closed)\n" >&2; exit 1; \
+	fi; \
+	printf "iface.prepare: would bring interface %s up/down (execution deferred to root phase)\n" "$$iface"
+
+VARS_EXCLUDES+=RUNTIME_MODULES
+
+-include $(TOP)/configure/RULES_RUNTIME.local

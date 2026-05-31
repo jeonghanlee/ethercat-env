@@ -1,6 +1,35 @@
-.PHONY: autoconf src_init src_autoconf
+.PHONY: autoconf src_init src_autoconf build.baseline host.debian13
 
-autoconf: src_init src_autoconf
+# build.baseline — order-only umbrella documenting the reproducible build path
+# as one named entry point: verify the pinned revision (M2) BEFORE configure,
+# then run the existing autoconf -> build -> build.modules sequence. The
+# prerequisites are listed in build order; src.verify is first so a moved
+# branch fails the baseline before any configure or compile runs. Non-root:
+# every step is configure/build inside $(SRC_PATH); no install.
+## Reproducible build path: src.verify then autoconf, build, build.modules
+build.baseline: src.verify autoconf build build.modules
+	$(QUIET)printf "build.baseline: OK — verified revision configured, built, and modules built\n"
+
+# host.debian13 — non-fatal report of detected OS name/version against the
+# Debian 13 expectation recorded in CONFIG_SRC. This is the lightweight
+# report only; the hard fail belongs to the M5 doctor layer. It never exits
+# non-zero, so it does not gate the tree.
+## Report detected OS name/version vs expected Debian 13 (non-fatal)
+host.debian13:
+	$(QUIET)exp_name="$(EXPECTED_OS_NAME)"; exp_ver="$(EXPECTED_OS_VERSION)"; \
+	det_name="$(OS_NAME)"; det_ver="$(OS_VERSION)"; det_major="$${det_ver%%.*}"; \
+	printf ">> Expected OS : %s %s\n" "$$exp_name" "$$exp_ver"; \
+	printf ">> Detected OS : %s %s\n" "$$det_name" "$$det_ver"; \
+	if [ "$$det_name" = "$$exp_name" ] && [ "$$det_major" = "$$exp_ver" ]; then \
+		printf "host.debian13: match\n"; \
+	else \
+		printf "host.debian13: MISMATCH (report only, non-fatal)\n"; \
+	fi
+
+# profile.check is listed FIRST so the fail-closed evidence gate runs before
+# src_autoconf (which itself invokes ./configure). An enabled native profile
+# without kernel + upstream-source evidence aborts before any configure runs.
+autoconf: profile.check src_init src_autoconf
 	cd $(SRC_PATH) && ./configure $(ETHERCAT_OPTIONS) --prefix=$(INSTALL_LOCATION)
 
 src_init:

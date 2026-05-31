@@ -1,0 +1,102 @@
+# RULES_VERIFY — repository-local verification harness (M14).
+#
+# The entire harness is dry-run / inspection / lint. It performs no install, no
+# module load, no GRUB edit, no service start, no host mutation. Its job is to
+# assert that the OTHER milestones' guards are present, and to act as the
+# regression gate for the root-affecting milestones (M8-M13) as they land.
+#
+# Scope registries
+# ----------------
+# VERIFY_ROOT_TARGETS       root-affecting targets that must reference both
+#                           `doctor` (or a scoped doctor) and `require-root` in
+#                           their expanded dry-run output.
+# VERIFY_GUARDPATH_TARGETS  the subset that additionally runs `rm` or writes
+#                           under a path prefix; these must ALSO reference
+#                           `guard-path`. Targets whose mutation is depmod -a /
+#                           ldconfig / update-grub / systemctl are gated by
+#                           doctor + require-root only (no guard-path).
+#
+# Each milestone appends its own targets to these lists via RULES_VERIFY.local or
+# an inline edit when the milestone lands. Today only M9 iface.prepare is wired;
+# M8/M10/M11/M13 extend the lists as they are applied. The harness checks exactly
+# the registered set, so it never asserts a guard against a not-yet-hardened
+# target.
+
+.PHONY: verify.reproducibility verify.dryrun verify.idempotence verify.residue verify.all
+
+# Root-affecting targets in scope for the currently-applied milestones.
+VERIFY_ROOT_TARGETS      ?= iface.prepare
+# Of those, the path-prefix-write / rm targets that must also carry guard-path.
+# src_install / src_uninstall / src_version / src_version.clean carry guard-path
+# from M2/M4; iface.prepare mutates link state (no path write), so it is not here.
+VERIFY_GUARDPATH_TARGETS ?= src_install src_uninstall src_version src_version.clean
+
+## Assert the pinned revision is reachable (src.verify) — non-hardware
+verify.reproducibility:
+	$(QUIET)printf "verify.reproducibility: checking pinned revision via src.verify\n"
+	$(QUIET)$(MAKE) --no-print-directory src.verify
+	$(QUIET)printf "verify.reproducibility: OK — init would reach the pinned revision\n"
+
+## Assert every registered root-affecting target is guarded in its dry-run
+verify.dryrun:
+	$(QUIET)rc=0; \
+	for t in $(VERIFY_ROOT_TARGETS); do \
+		out="$$($(MAKE) --no-print-directory --dry-run $$t 2>/dev/null)"; \
+		if [ -z "$$out" ]; then \
+			printf "verify.dryrun: FAIL — %s produced empty dry-run\n" "$$t" >&2; rc=1; continue; \
+		fi; \
+		case "$$out" in \
+			*doctor:*) : ;; \
+			*) printf "verify.dryrun: FAIL — %s dry-run lacks a doctor reference\n" "$$t" >&2; rc=1;; \
+		esac; \
+		case "$$out" in \
+			*require-root:*) : ;; \
+			*) printf "verify.dryrun: FAIL — %s dry-run lacks require-root\n" "$$t" >&2; rc=1;; \
+		esac; \
+		if [ "$$rc" -eq 0 ]; then printf "verify.dryrun: OK   — %s (doctor + require-root)\n" "$$t"; fi; \
+	done; \
+	for t in $(VERIFY_GUARDPATH_TARGETS); do \
+		out="$$($(MAKE) --no-print-directory --dry-run $$t 2>/dev/null)"; \
+		if [ -z "$$out" ]; then \
+			printf "verify.dryrun: FAIL — %s produced empty dry-run\n" "$$t" >&2; rc=1; continue; \
+		fi; \
+		case "$$out" in \
+			*guard-path:*) printf "verify.dryrun: OK   — %s (guard-path)\n" "$$t";; \
+			*) printf "verify.dryrun: FAIL — %s writes a path but lacks guard-path\n" "$$t" >&2; rc=1;; \
+		esac; \
+	done; \
+	if [ "$$rc" -ne 0 ]; then exit 1; fi; \
+	printf "verify.dryrun: OK — all registered targets guarded\n"
+
+## Assert repeated dry-run output for registered targets is byte-stable
+verify.idempotence:
+	$(QUIET)rc=0; \
+	for t in $(VERIFY_ROOT_TARGETS) $(VERIFY_GUARDPATH_TARGETS); do \
+		a="$$($(MAKE) --no-print-directory --dry-run $$t 2>/dev/null)"; \
+		b="$$($(MAKE) --no-print-directory --dry-run $$t 2>/dev/null)"; \
+		if [ "$$a" != "$$b" ]; then \
+			printf "verify.idempotence: FAIL — %s dry-run not stable across runs\n" "$$t" >&2; rc=1; \
+		else \
+			printf "verify.idempotence: OK   — %s stable\n" "$$t"; \
+		fi; \
+	done; \
+	if [ "$$rc" -ne 0 ]; then exit 1; fi; \
+	printf "verify.idempotence: OK — registered dry-runs stable\n"
+
+## Assert remove.audit (M13) reports no residue; skip cleanly until M13 lands
+verify.residue:
+	$(QUIET)if $(MAKE) --no-print-directory -n remove.audit >/dev/null 2>&1; then \
+		out="$$($(MAKE) --no-print-directory remove.audit 2>/dev/null)"; \
+		case "$$out" in \
+			*residue*|*RESIDUE*) printf "verify.residue: FAIL — remove.audit reports residue\n" >&2; exit 1;; \
+			*) printf "verify.residue: OK — remove.audit reports no residue\n";; \
+		esac; \
+	else \
+		printf "verify.residue: SKIP — remove.audit not defined yet (M13 pending)\n"; \
+	fi
+
+## Umbrella regression gate over the harness
+verify.all: verify.reproducibility verify.dryrun verify.idempotence verify.residue
+	$(QUIET)printf "verify.all: OK — repository-local verification harness passed\n"
+
+-include $(TOP)/configure/RULES_VERIFY.local

@@ -37,7 +37,11 @@ WITH_DEV_GENERIC:=YES
 #WITH_DEV_E1000:=NO
 #WITH_DEV_E1000E:=NO
 #WITH_DEV_IGB:=NO
-WITH_DEV_R8169:=YES
+# Generic-only default: native NIC drivers are opt-in via CONFIG_SITE.local.
+# The default ETHERCAT_OPTIONS therefore no longer carries --enable-r8169.
+# profile.check (RULES_PROFILE) fails closed if a native flag is enabled
+# without matching kernel + upstream-source driver evidence.
+WITH_DEV_R8169:=NO
 #WITH_DEV_CCAT:=NO
 
 ENABLE_STATIC:=YES

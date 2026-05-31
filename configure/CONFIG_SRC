@@ -43,6 +43,14 @@ OS_VERSION:=$(strip $(shell grep -Po '^VERSION_ID=\K[^d].+' /etc/os-release | se
 OS_NAME:=$(strip $(shell grep -Po '^ID=\K[^S].+' /etc/os-release | sed 's/\"//g'))
 endif
 
+# Expected target platform for this repository (Debian 13 only). The
+# host.debian13 report (RULES_ETHERCAT) compares the detected OS_NAME /
+# OS_VERSION against these expectations and is non-fatal; the hard fail lives
+# in the M5 doctor layer. OS_VERSION carries the point release (for example
+# "13.5"), so the assertion matches the major version prefix only.
+EXPECTED_OS_NAME:=debian
+EXPECTED_OS_VERSION:=13
+
 DO_MAKE:=make -C $(SRC_PATH)
 
 

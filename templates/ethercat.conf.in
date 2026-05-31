@@ -1,0 +1,50 @@
+#------------------------------------------------------------------------------
+#
+#  EtherCAT master configuration file for use with ethercatctl.
+#
+#  GENERATED FILE — do not edit by hand.
+#  Rendered by `make runtime.generate` from templates/ethercat.conf.in.
+#  Site inputs: configure/ethercatmaster.conf and the selected device profile.
+#
+#------------------------------------------------------------------------------
+
+#
+# Main Ethernet device for master 0.
+#
+# A MAC address (hex with colons) or a network interface name (resolved to a
+# MAC by the init script via the 'ip' command). The broadcast address
+# "ff:ff:ff:ff:ff:ff" accepts the first device offered by any Ethernet driver.
+#
+# A non-empty MASTER0_DEVICE creates one master.
+#
+MASTER0_DEVICE="@MASTER0_DEVICE@"
+
+#
+# Backup Ethernet device for master 0 (redundancy). Empty disables redundancy.
+#
+MASTER0_BACKUP="@MASTER0_BACKUP@"
+
+#
+# Ethernet driver modules used for EtherCAT operation.
+#
+# Space-separated list. Except for the generic driver, the init script unloads
+# the stock Ethernet driver and replaces it with the EtherCAT-capable one.
+# Possible values: 8139too, e100, e1000, e1000e, r8169, generic, ccat, igb,
+# igc, genet, dwmac-intel, stmmac-pci.
+#
+DEVICE_MODULES="@DEVICE_MODULES@"
+
+#
+# Interfaces brought up on `ethercatctl start` and down on `ethercatctl stop`.
+#
+# Space-separated interface names (such as eth0 or enp3s0). With the generic
+# driver the device must be up before the master starts, or all frames time out.
+#
+UPDOWN_INTERFACES="@UPDOWN_INTERFACES@"
+
+#
+# Flags for loading kernel modules. Usually left empty.
+#
+#MODPROBE_FLAGS="-b"
+
+#------------------------------------------------------------------------------

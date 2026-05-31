@@ -133,6 +133,11 @@ else
 ETHERCAT_OPTIONS+=--enable-rt-syslog=no
 endif
 
+# Explicit tracked default for the RTMUTEX patch branch (M7). Previously never
+# assigned, which left this branch dead. Default NO = generic build, no patchset.
+# Opt in via CONFIG_SITE.local (WITH_PATCHSET:=YES) together with ENABLE_RTMUTEX.
+WITH_PATCHSET ?= NO
+
 ifeq ($(WITH_PATCHSET),YES)
 ifeq ($(ENABLE_RTMUTEX),YES)
 ETHERCAT_OPTIONS+=--enable-rtmutex=yes
