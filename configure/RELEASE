@@ -3,12 +3,11 @@ APPNAME:=ethercat
 
 ## Where the Source repository SRC_URL/SRC_NAME
 #
-SRC_URL:=https://gitlab.com/jeonghanlee
+SRC_URL:=https://gitlab.com/etherlab.org
 SRC_NAME:=${APPNAME}
 
-## Which the source tag / branch / hash id would like to use
-# 2025-06-23
-SRC_TAG=ced654cb
+## Which source tag, branch, or hash id to use
+SRC_TAG:=stable-1.6
 
 # Placeholder for the site-specific version control
 SRC_VERSION=${SRC_TAG}
