@@ -4,8 +4,8 @@ install: src_install
 uninstall: src_uninstall
 
 
-# src_preinst is re-introduced as a real target in a later milestone (M10);
-# it is intentionally not a prerequisite here so the install graph resolves.
+# src_preinst is intentionally omitted: this install path needs no pre-install
+# hook, so the install graph deliberately has no such prerequisite.
 src_install: src_version
 	$(QUIET)$(call guard-path,$(INSTALL_LOCATION))
 	$(QUIET)$(SUDO) install -d $(INSTALL_LOCATION)
@@ -15,8 +15,9 @@ src_install: src_version
 # sd_stop / sd_disable / sd_clean are the real systemd-lifecycle targets defined
 # in RULES_SYSTEMD (M10). They run BEFORE the prefix-tree removal so the service
 # is stopped, disabled, and its unit file cleaned before the installed files go.
-# src_postrm (M13) returns as a real target in a later milestone, wired through
-# the aggregator rather than dangling here. The rm -rf is guarded by guard-path.
+# There is no separate src_postrm target: the equivalent teardown lives in the
+# sd_* targets (RULES_SYSTEMD, M10) that src_uninstall already depends on. The
+# rm -rf below is guarded by guard-path.
 src_uninstall: sd_stop sd_disable sd_clean src_version.clean
 	$(QUIET)echo "Removing $(INSTALL_LOCATION)..."
 	$(QUIET)$(call guard-path,$(INSTALL_LOCATION))
