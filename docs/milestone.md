@@ -41,9 +41,11 @@ verified on branch `dev/milestone-buildout`. The repository-local target graph
 (`configure/RULES_*` + `configure/CONFIG_*`, `templates/`, `patch/`,
 `examples/`) is in place and was checked with `make --dry-run` and read-only
 targets only; no host state was mutated and no hardware test has run yet. The
-next step is VM-based real-execution validation (cloud-provision a Debian 13
-VM and run the install, module, systemd, udev, GRUB, service, and removal
-targets for real), followed by the M16 hardware gates.
+next step is VM-based real-execution validation, built as a SEPARATE
+repository (the ioc-runner / ansible-provision pattern, not inside
+ethercat-env): cloud-provision a Debian 13 VM and run the install, module,
+systemd, udev, GRUB, service, and removal targets for real, followed by the
+M16 hardware gates.
 
 This file is the repository source of truth for milestone status. Agent memory
 may keep clone hints for reference repositories, but milestone status and
@@ -277,10 +279,11 @@ M1 through M14 are code-complete and dry-run verified on branch
 `make --dry-run` and read-only targets only; no host state was mutated and no
 hardware test has run yet, so none of these milestones are hardware-verified.
 
-The next step is VM-based real-execution validation: cloud-provision a Debian 13
-VM and run the root-affecting install, module, systemd, udev, GRUB, service
-policy, and removal targets for real, in dependency order behind the doctor and
-destructive-target guards. After real execution holds on a VM, move to the M16
+The next step is VM-based real-execution validation, built as a SEPARATE
+repository (the ioc-runner / ansible-provision pattern, not inside this repo):
+cloud-provision a Debian 13 VM and run the root-affecting install, module,
+systemd, udev, GRUB, service policy, and removal targets for real, in
+dependency order behind the doctor and destructive-target guards. After real execution holds on a VM, move to the M16
 hardware gates (real adapter, slave chain, reboot persistence, kernel update
 behavior, unload/reload, and RT readiness on target hardware). M15 documentation
 can be completed in parallel once the executed behavior is observed.
