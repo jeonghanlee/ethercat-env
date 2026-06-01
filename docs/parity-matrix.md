@@ -39,7 +39,7 @@ here and is tracked by the M16 external gate (see `docs/milestone.md`,
 | EC-5 | Module lifecycle | M8 + M16 | `module.lifecycle`, `dkms.conf`, `install.dkms`, `build.modules` | M8 repo-local: `make print-MODULE_NAME` / `print-MODULE_VERSION` non-empty; `make module.lifecycle` prints DKMS; `make --dry-run install.dkms` shows expanded `dkms ... -m <name> -v <version>` with `doctor` ahead. M16 gate: kernel-update rebuild demonstrated on hardware. |
 | EC-6 | Userspace command | M10 (command/loader) + M13 (uninstall) | `command.install`, `command.audit`, `loader.install`, `loader.audit`, `remove.audit` | M10: `make command.audit` and `make loader.audit` run read-only and report discovery; `make --dry-run command.install` / `loader.install`. M13: `make remove.audit` reports residual command path / loader entries after a dry-run removal sequence. |
 | EC-7 | `ethercat.conf` | M9 | `runtime.generate`, `runtime.lint`, `runtime.config.show` | `make runtime.generate` produces a repo-local artifact; `make runtime.lint` passes on it and fails on a missing master device; `make runtime.config.show` prints master, backup, device modules, and up/down interface stanzas. |
-| EC-8 | NIC preparation | M9 (generator) + M10 (runtime.status) | `iface.prepare`, `iface.status`, `runtime.generate`, `runtime.status` | `make --dry-run iface.prepare` shows intended up/down operations tied to the selected profile; `make iface.status` reports interface state read-only; the up/down stanzas appear in `make runtime.config.show` and are reported by `make runtime.status`. |
+| EC-8 | NIC preparation | M9 (generator) + M10 (runtime.status) | `iface.prepare` (root-affecting), `iface.status`, `runtime.generate`, `runtime.status` | `make --dry-run iface.prepare` shows the root-affecting up/down operations tied to the selected profile with `doctor` + `require-root` ahead and the link change routed through `$(SUDO) ip link set`; `make iface.status` reports interface state read-only; the up/down stanzas appear in `make runtime.config.show` and are reported by `make runtime.status`. |
 | EC-9 | systemd and udev | M10 | `systemd.install`/`enable`/`start`/`stop`/`disable`/`remove`, `udev.install`/`udev.remove`, `runtime.status` | `make --dry-run systemd.install` shows stage-then-copy with `doctor` ahead; `make --dry-run udev.install` shows rule path and reload; `make runtime.status` reports service and udev state separately, read-only. |
 | EC-10 | Removal | M13 (guards from M5) | `remove.uninstall`, `remove.purge`, `remove.audit`, `remove.dryrun`, `src_uninstall` | `make --dry-run remove.uninstall` shows `guard-path` ahead of each `rm`; negative test forces `INSTALL_LOCATION` empty and the guard aborts before any `rm`; `make remove.audit` reports residue read-only. |
 
@@ -67,7 +67,7 @@ boundary is unambiguous and so M14 `verify.*` can assert both halves.
 | --- | --- | --- | --- |
 | EC-5 Module lifecycle | M8 — lifecycle record, `dkms.conf` generation, expanded DKMS dry-run, `MODULE_NAME`/`MODULE_VERSION` non-empty | M16 — kernel-update rebuild demonstrated on hardware | M8 records and proves the DKMS strategy repository-locally; the actual rebuild-after-kernel-update outcome can only be demonstrated on hardware. The dev plan and `docs/milestone.md` "Review Convergence Summary" both attribute this to M8, and the "Kernel update behavior" external gate names M8, M14, M16. |
 | EC-6 Userspace command | M10 — `command.install`/`command.audit`, `loader.install`/`loader.audit` | M13 — `remove.audit` proves command path and loader entries are reversible | "Userspace command and loader integration" is M8/M10/M13 per `docs/milestone.md` "Review Convergence Summary". M10 establishes exposure and discovery; M13 proves the uninstall/audit reversibility the criterion requires ("explicit and reversible"). |
-| EC-8 NIC preparation | M9 — `iface.prepare`/`iface.status` generated from the selected profile, up/down stanzas rendered into `ethercat.conf` | M10 — `runtime.status` reports interface operations alongside service/module state | NIC preparation is generated from the profile-driven runtime config (M9) but its operational state surfaces through the consolidated runtime view (M10). See "New NIC Preparation Row" below. |
+| EC-8 NIC preparation | M9 — `iface.prepare` (root-affecting NIC up/down) and `iface.status` (read-only) driven by the selected profile, up/down stanzas rendered into `ethercat.conf` | M10 — `runtime.status` reports interface operations alongside service/module state | NIC preparation is generated from the profile-driven runtime config (M9) but its operational state surfaces through the consolidated runtime view (M10). `iface.prepare` performs the actual link-state change and is root-affecting (`doctor` + `require-root` + `$(SUDO) ip link`); `iface.status` is read-only. See "New NIC Preparation Row" below. |
 | RT-6 Service policy | M11 — `rt.service.apply`/`rt.service.audit` with explicit allowlist | M13 — service-policy rollback/audit folded into `remove.audit` | The criterion requires "apply, and rollback or audit-only behavior". M11 owns apply/audit; M13 owns the removal/rollback path. |
 
 Additional rows carry a repository-local plus external-gate split rather than two
@@ -87,15 +87,19 @@ M10 `runtime.status` adapter/profile reporting. This matrix names the row
 explicitly and assigns two dedicated targets so the criterion has its own
 acceptance handle:
 
-- `iface.prepare` (M9, non-root) — render the profile-selected interface up/down
-  operations into the repository-local `ethercat.conf` artifact; dry-run shows
-  the intended `ip link` / interface operations and never mutates the host.
+- `iface.prepare` (M9, root-affecting) — bring the profile-selected interface
+  up/down via `$(SUDO) ip link set`. It is wired with `doctor` as a normal
+  prerequisite (fail-closed) and `require-root` as its first recipe line, and it
+  refuses to act on an empty/unresolved interface name. The `up/down` stanzas it
+  acts on are also rendered into the repository-local `ethercat.conf` artifact by
+  `runtime.generate`; only `iface.prepare` performs the live link-state change.
 - `iface.status` (M9/M10, non-root, read-only) — report current interface state
   for the configured master/backup devices, consumed by `runtime.status`.
 
-Acceptance: `make --dry-run iface.prepare` shows the intended interface
-operations tied to the active profile; `make iface.status` reports interface
-state read-only; the operations are visible in `make runtime.config.show` and
+Acceptance: `make --dry-run iface.prepare` shows the root-affecting interface
+operations tied to the active profile with `doctor` + `require-root` ahead of the
+`$(SUDO) ip link set` mutation; `make iface.status` reports interface state
+read-only; the operations are visible in `make runtime.config.show` and
 `make runtime.status`. Hardware link-up behavior is deferred to the M16 "Real
 hardware discovery" gate.
 

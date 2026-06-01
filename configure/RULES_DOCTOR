@@ -4,36 +4,59 @@
 # before any later module references them. The doctor target is read-only: it
 # probes for tools and reports presence, never installing anything.
 
-.PHONY: doctor
+.PHONY: doctor doctor.tools doctor.kernel doctor.systemd doctor.rtdiag
+
+# doctor_probe SCOPE TOOL-LIST
+# Shared read-only probing loop. $(1) is a label used in the report and the
+# fail message; $(2) is a space-separated list of tool NAMES (each resolved to
+# its command via DOCTOR_TOOL_<name>). FAIL-CLOSED: any missing tool makes the
+# recipe exit non-zero, so a root-affecting recipe never starts on an
+# under-provisioned host. Never installs anything.
+define doctor_probe
+	PATH="$$PATH:/usr/local/sbin:/usr/sbin:/sbin"; missing=""; \
+	for name in $(2); do \
+		cmd="$$(eval "echo \$$DOCTOR_TOOL_$$name")"; \
+		[ -n "$$cmd" ] || cmd="$$name"; \
+		if command -v "$$cmd" >/dev/null 2>&1; then \
+			printf "doctor[%s]: present  %-12s (%s)\n" "$(1)" "$$name" "$$(command -v "$$cmd")"; \
+		else \
+			printf "doctor[%s]: MISSING  %-12s (%s)\n" "$(1)" "$$name" "$$cmd" >&2; \
+			missing="$$missing $$name"; \
+		fi; \
+	done; \
+	if [ -n "$$missing" ]; then \
+		printf "doctor[%s]: FAIL — missing required tools:%s\n" "$(1)" "$$missing" >&2; \
+		exit 1; \
+	fi; \
+	printf "doctor[%s]: OK — all required tools present\n" "$(1)"
+endef
 
 # doctor is wired as a NORMAL prerequisite of root-affecting targets in later
 # milestones; its recipe exits non-zero on any missing required tool so a
 # root-affecting recipe never starts on an under-provisioned host.
 ## Verify every REQUIRED host tool exists and is executable (fail-closed)
 doctor:
-	$(QUIET)PATH="$$PATH:/usr/local/sbin:/usr/sbin:/sbin"; missing=""; \
-	for entry in \
-		autoreconf:$(DOCTOR_TOOL_autoreconf) \
-		depmod:$(DOCTOR_TOOL_depmod) \
-		dkms:$(DOCTOR_TOOL_dkms) \
-		systemctl:$(DOCTOR_TOOL_systemctl) \
-		udevadm:$(DOCTOR_TOOL_udevadm) \
-		ldconfig:$(DOCTOR_TOOL_ldconfig) \
-		git:$(DOCTOR_TOOL_git) \
-		make:$(DOCTOR_TOOL_make); do \
-		name="$${entry%%:*}"; cmd="$${entry#*:}"; \
-		if command -v "$$cmd" >/dev/null 2>&1; then \
-			printf "doctor: present  %-12s (%s)\n" "$$name" "$$(command -v "$$cmd")"; \
-		else \
-			printf "doctor: MISSING  %-12s (%s)\n" "$$name" "$$cmd" >&2; \
-			missing="$$missing $$name"; \
-		fi; \
-	done; \
-	if [ -n "$$missing" ]; then \
-		printf "doctor: FAIL — missing required tools:%s\n" "$$missing" >&2; \
-		exit 1; \
-	fi; \
-	printf "doctor: OK — all required tools present\n"
+	$(QUIET)$(call doctor_probe,all,$(DOCTOR_REQUIRED))
+
+# Scoped sub-doctors. A root-affecting target depends only on the scope it
+# needs: M8 DKMS lifecycle on doctor.kernel + doctor.tools (dkms + depmod), M10
+# systemd/udev/loader on doctor.systemd (systemctl + udevadm + ldconfig). Each
+# exits non-zero on a missing member of its own subset (fail-closed).
+## Verify userspace build/packaging tools (M8 DKMS): dkms, depmod (fail-closed)
+doctor.tools:
+	$(QUIET)$(call doctor_probe,tools,$(DOCTOR_REQUIRED_tools))
+
+## Verify kernel-module tooling (M8 depmod + DKMS rebuild): depmod, dkms (fail-closed)
+doctor.kernel:
+	$(QUIET)$(call doctor_probe,kernel,$(DOCTOR_REQUIRED_kernel))
+
+## Verify service/udev/loader tooling (M10): systemctl, udevadm, ldconfig (fail-closed)
+doctor.systemd:
+	$(QUIET)$(call doctor_probe,systemd,$(DOCTOR_REQUIRED_systemd))
+
+## Verify RT priority tooling (M12 chrt SCHED_FIFO change): chrt (fail-closed)
+doctor.rtdiag:
+	$(QUIET)$(call doctor_probe,rtdiag,$(DOCTOR_REQUIRED_rtdiag))
 
 # guard-path PATHVAR
 # Assert a path variable is non-empty and absolute before any rm -rf or write.
@@ -70,5 +93,6 @@ endef
 
 VARS_EXCLUDES+=guard-path
 VARS_EXCLUDES+=require-root
+VARS_EXCLUDES+=doctor_probe
 
 -include $(TOP)/configure/RULES_DOCTOR.local

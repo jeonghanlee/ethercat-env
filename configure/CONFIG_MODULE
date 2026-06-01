@@ -1,5 +1,84 @@
+# CONFIG_MODULE — kernel-module identity and DKMS source-tree variables (M8).
+#
+# Delegated decision D1: DKMS is the recorded PRODUCTION lifecycle so kernel
+# modules auto-rebuild on a Debian 13 kernel update. The direct
+# build.modules / install.modules path is retained as the DEVELOPER build path,
+# not the production lifecycle (see RULES_ETHERCAT module.lifecycle).
+#
+# MODULE_NAME / MODULE_VERSION were previously undefined, which made every DKMS
+# target expand "dkms ... -m  -v  ..." (blank). They are given explicit values
+# here so the DKMS targets resolve. MODULE_VERSION is pinned to the upstream
+# SRC_TAG-derived release; a site may override via CONFIG_DKMS.local.
+#
+# NOTE: these use ":=" (immediate, unconditional), NOT "?=". The build host's
+# environment was observed to export MODULE_NAME / MODULE_VERSION, so "?=" let a
+# stray environment value win and MODULE_VERSION resolved to a wrong value. The
+# configure tree must own the module identity deterministically (matching how
+# APPNAME and SRC_TAG are assigned with ":="). Site overrides go through the
+# CONFIG_DKMS.local include at the end of this file.
 
 ## Debian dkms path
 DKMS=/usr/sbin/dkms
+
+# DKMS module identity. MODULE_NAME is the dkms -m argument; MODULE_VERSION is
+# the dkms -v argument. Both must be non-empty for the DKMS targets to resolve.
+MODULE_NAME    := ethercat
+MODULE_VERSION := 1.6.9
+
+# DKMS source-tree location. dkms.conf is generated INTO this tree (non-root);
+# "dkms add" later registers /usr/src/$(MODULE_NAME)-$(MODULE_VERSION) from it.
+# DKMS_SRC_TREE is the repo-local source the dkms.conf target writes into; it is
+# the upstream clone, so the generated dkms.conf travels with the module source.
+#
+# These use deferred "=" (not ":="), because SRC_PATH is defined in CONFIG_VARS
+# which the CONFIG aggregator includes AFTER this file; an immediate ":=" here
+# would capture SRC_PATH while it is still empty. Deferred expansion resolves
+# them at use time, by which point SRC_PATH is set. MODULE_NAME / MODULE_VERSION
+# above stay ":=" so the environment-export defense holds for the identity.
+DKMS_SRC_TREE   = $(SRC_PATH)
+DKMS_CONF       = $(DKMS_SRC_TREE)/dkms.conf
+
+# Canonical /usr/src path DKMS registers (where "dkms add" expects the tree).
+# Referenced for reporting only; the dkms.conf generation target never writes
+# here (that is a root-affecting "dkms add" concern).
+DKMS_USR_SRC    = /usr/src/$(MODULE_NAME)-$(MODULE_VERSION)
+
+# dkms.conf generation template (rendered by the non-root dkms.conf target).
+DKMS_CONF_TEMPLATE := $(TOP)/templates/dkms.conf.in
+
+# DKMS_DEVICE_MODULES — the upstream device-driver basenames for each enabled
+# WITH_DEV_* profile, in profile order. The dkms.conf target turns each into an
+# ec_<name> BUILT_MODULE_NAME entry (index 1..N) after the static ec_master
+# (index 0). The set mirrors the profile resolution in RULES_RUNTIME so the DKMS
+# module set and the runtime DEVICE_MODULES stay aligned. WITH_DEV_* come from
+# CONFIG_SITE, which the aggregator includes before this file, so the ifeq
+# selectors resolve here.
+DKMS_DEVICE_MODULES :=
+ifeq ($(WITH_DEV_GENERIC),YES)
+DKMS_DEVICE_MODULES += generic
+endif
+ifeq ($(WITH_DEV_8139TOO),YES)
+DKMS_DEVICE_MODULES += 8139too
+endif
+ifeq ($(WITH_DEV_E100),YES)
+DKMS_DEVICE_MODULES += e100
+endif
+ifeq ($(WITH_DEV_E1000),YES)
+DKMS_DEVICE_MODULES += e1000
+endif
+ifeq ($(WITH_DEV_E1000E),YES)
+DKMS_DEVICE_MODULES += e1000e
+endif
+ifeq ($(WITH_DEV_IGB),YES)
+DKMS_DEVICE_MODULES += igb
+endif
+ifeq ($(WITH_DEV_R8169),YES)
+DKMS_DEVICE_MODULES += r8169
+endif
+ifeq ($(WITH_DEV_CCAT),YES)
+DKMS_DEVICE_MODULES += ccat
+endif
+
+VARS_EXCLUDES+=DKMS_DEVICE_MODULES
 
 -include $(TOP)/configure/CONFIG_DKMS.local

@@ -75,6 +75,41 @@ ENABLE_RT_SYSLOG:=YES
 # ENABLE_RTMUTEX:=NO
 
 
+# ---------------------------------------------------------------------------
+# M10 — systemd / udev / command-path / loader integration parameters.
+#
+# Site-tunable surface consumed by RULES_SYSTEMD. Templates under templates/
+# render against these values into a repo-local STAGING path first; only the
+# *.install targets copy into the system location. Override in CONFIG_SITE.local.
+# ---------------------------------------------------------------------------
+
+# systemd service. SYSTEMD_UNIT_NAME is the installed unit filename;
+# SYSTEMD_UNIT_DIR is the system unit directory the *.install target copies into.
+SYSTEMD_UNIT_NAME ?= epics-ethercat.service
+SYSTEMD_UNIT_DIR  ?= /etc/systemd/system
+
+# ethercatctl path the rendered unit calls. Defaults to the prefix-tree install
+# location ($(INSTALL_LOCATION)/sbin) so it matches where build.install lands.
+ETHERCATCTL_PATH  ?= $(INSTALL_LOCATION)/sbin/ethercatctl
+
+# udev rule. ECAT_UDEV_NAME is the installed rule filename; ECAT_UDEV_DIR is the
+# system rules.d directory. ECAT_DEV_GROUP / ECAT_DEV_MODE set device access.
+ECAT_UDEV_NAME    ?= 99-EtherCAT.rules
+ECAT_UDEV_DIR     ?= /etc/udev/rules.d
+ECAT_DEV_GROUP    ?= ethercat
+ECAT_DEV_MODE     ?= 0660
+
+# Command path. The userspace tool is exposed at COMMAND_LINK (a symlink on PATH)
+# pointing at the prefix-tree binary COMMAND_TARGET.
+COMMAND_TARGET    ?= $(INSTALL_LOCATION)/bin/ethercat
+COMMAND_LINK      ?= /usr/bin/ethercat
+
+# Loader. ldconfig integration drops a conf fragment naming the prefix-tree
+# libdir so the runtime linker finds libethercat.
+LOADER_CONF_NAME  ?= ethercat.conf
+LOADER_CONF_DIR   ?= /etc/ld.so.conf.d
+LOADER_LIBDIR     ?= $(INSTALL_LOCATION)/lib
+
 # These allow developers to override the CONFIG_SITE variable
 # settings without having to modify the configure/CONFIG_SITE
 # file itself.

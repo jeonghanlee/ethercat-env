@@ -1,0 +1,109 @@
+# CONFIG_RT — Debian 13 real-time host configuration variable surface (M11).
+#
+# This file declares ONLY variable surface for the RT host configuration:
+# RT kernel/header package names, the realtime group, the limits.d policy file
+# content, the GRUB parameter set, the expected clock source, the service-policy
+# allowlist, and the tuned profile name. No recipe lives here; the targets that
+# consume these values are in RULES_RT.
+#
+# Delegated decision D2: RT kernel and headers are PROVISIONED, but the boot
+# default is NEVER forced from a repository target. Kernel selection is explicit
+# (rt.kernel.select) and post-reboot running-kernel confirmation is an external
+# gate (M16). Nothing in this surface sets a default kernel.
+#
+# Every value below is overridable via configure/CONFIG_RT.local so a site can
+# retarget package names, the group, the limits, the GRUB parameters, the
+# clocksource, the allowlist, or the tuned profile without editing this file.
+
+# ---------------------------------------------------------------------------
+# RT kernel and headers (rt.kernel.provision / rt.kernel.select)
+# ---------------------------------------------------------------------------
+
+# Debian 13 PREEMPT_RT meta-packages. The provision target installs these; it
+# never marks them as the boot default (D2). RT_KERNEL_FLAVOR is the uname-style
+# flavor used by rt.kernel.select / rt.status to identify the RT kernel among the
+# installed candidates without changing the GRUB default.
+RT_KERNEL_PKG     ?= linux-image-rt-amd64
+RT_HEADERS_PKG    ?= linux-headers-rt-amd64
+RT_KERNEL_FLAVOR  ?= rt-amd64
+
+# Package manager used by the provision target. Kept as a variable so a site can
+# pin a specific front-end; the provision recipe routes it through $(SUDO).
+RT_PKG_MANAGER    ?= apt-get
+RT_PKG_INSTALL    ?= install -y
+
+# ---------------------------------------------------------------------------
+# Realtime group and limits.d policy (rt.limits.install / rt.limits.audit)
+# ---------------------------------------------------------------------------
+
+# The POSIX group granted real-time scheduling and memory-locking limits.
+RT_GROUP          ?= realtime
+
+# The limits.d policy file installed under /etc/security/limits.d. The path is a
+# PATH PREFIX target, so every write/rm against it is wrapped with guard-path.
+RT_LIMITS_DIR     ?= /etc/security/limits.d
+RT_LIMITS_NAME    ?= 99-realtime.conf
+RT_LIMITS_FILE    ?= $(RT_LIMITS_DIR)/$(RT_LIMITS_NAME)
+
+# limits.d policy body, one "@group domain item value" token-row per line. The
+# install target renders these lines into the policy file. rtprio 99 and an
+# unlimited memlock are the standard EtherCAT/RT master requirements; the soft
+# nice floor lets RT threads raise priority.
+RT_LIMITS_RULE_1  ?= @$(RT_GROUP)   -   rtprio   99
+RT_LIMITS_RULE_2  ?= @$(RT_GROUP)   -   memlock  unlimited
+RT_LIMITS_RULE_3  ?= @$(RT_GROUP)   -   nice     -20
+RT_LIMITS_RULES   ?= $(RT_LIMITS_RULE_1)|$(RT_LIMITS_RULE_2)|$(RT_LIMITS_RULE_3)
+
+# ---------------------------------------------------------------------------
+# GRUB boot parameters (rt.grub.apply / rt.grub.audit / rt.grub.rollback)
+# ---------------------------------------------------------------------------
+
+# The GRUB defaults file edited by rt.grub.apply and restored by rt.grub.rollback.
+# Both the file and its backup are PATH PREFIX targets wrapped with guard-path.
+RT_GRUB_FILE      ?= /etc/default/grub
+RT_GRUB_BACKUP    ?= /etc/default/grub.ethercat-rt.bak
+
+# The kernel command-line parameters appended for RT isolation. isolcpus /
+# nohz_full / rcu_nocbs are placeholders a site tunes to its CPU topology in
+# CONFIG_RT.local; they are recorded here as the declared default parameter set.
+RT_GRUB_PARAM_1   ?= isolcpus=
+RT_GRUB_PARAM_2   ?= nohz_full=
+RT_GRUB_PARAM_3   ?= rcu_nocbs=
+RT_GRUB_PARAM_4   ?= intel_pstate=disable
+RT_GRUB_PARAMS    ?= $(strip $(RT_GRUB_PARAM_4))
+# The grub variable the parameters are appended to.
+RT_GRUB_VARIABLE  ?= GRUB_CMDLINE_LINUX_DEFAULT
+
+# ---------------------------------------------------------------------------
+# Clock source (rt.clock.status)
+# ---------------------------------------------------------------------------
+
+# The expected clock source for an RT host. rt.clock.status reports current and
+# available sources read-only and compares against this expectation; it never
+# writes the clocksource.
+RT_EXPECTED_CLOCKSOURCE ?= tsc
+RT_CLOCK_CURRENT_PATH   ?= /sys/devices/system/clocksource/clocksource0/current_clocksource
+RT_CLOCK_AVAIL_PATH     ?= /sys/devices/system/clocksource/clocksource0/available_clocksource
+
+# ---------------------------------------------------------------------------
+# Service policy allowlist (rt.service.apply / rt.service.audit)
+# ---------------------------------------------------------------------------
+
+# rt.service.apply operates ONLY on this explicit allowlist. Any service not
+# named here is never touched. The values are systemd unit names whose state the
+# apply target normalizes (RT_SERVICE_ACTION) for an RT host; the audit target
+# reports their state read-only.
+#   - irqbalance is masked on an RT host (IRQ affinity is pinned by hand).
+RT_SERVICE_ALLOWLIST ?= irqbalance.service
+RT_SERVICE_ACTION    ?= mask
+
+# ---------------------------------------------------------------------------
+# tuned profile (rt.tuned.status)
+# ---------------------------------------------------------------------------
+
+# The tuned profile an RT host would select WHEN tuned is available and the site
+# has explicitly chosen it. rt.tuned.status only reports availability/selection/
+# active state; it never auto-engages tuned.
+RT_TUNED_PROFILE  ?= realtime
+
+-include $(TOP)/configure/CONFIG_RT.local

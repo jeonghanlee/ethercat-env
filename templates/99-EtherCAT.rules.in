@@ -1,0 +1,15 @@
+#------------------------------------------------------------------------------
+#
+#  udev rule for the EtherCAT master character device(s).
+#
+#  GENERATED FILE — do not edit by hand.
+#  Rendered by `make udev.install` from templates/99-EtherCAT.rules.in.
+#  Parameter source: configure/CONFIG_SITE / RULES_SYSTEMD
+#  (EtherCAT device access group and mode).
+#
+#  Grants the configured group read/write access to /dev/EtherCAT* so an
+#  unprivileged EPICS IOC process can talk to the master without root.
+#
+#------------------------------------------------------------------------------
+
+KERNEL=="EtherCAT[0-9]*", MODE="@ECAT_DEV_MODE@", GROUP="@ECAT_DEV_GROUP@"

@@ -16,8 +16,22 @@ DOCTOR_TOOL_make       := make
 
 # The set of tools the bare "doctor" target treats as REQUIRED. A missing
 # member here makes "doctor" exit non-zero (fail-closed). Scoped sub-doctors
-# may require narrower subsets in later milestones.
+# require narrower subsets so a root-affecting target can depend on only the
+# doctor scope it needs.
 DOCTOR_REQUIRED := autoreconf depmod dkms systemctl udevadm ldconfig git make
+
+# Scoped required subsets (consumed by doctor.tools / doctor.kernel /
+# doctor.systemd in RULES_DOCTOR). Each scoped doctor exits non-zero on any
+# missing member of its own subset, so a root-affecting target depends only on
+# the scope it actually uses.
+#   tools   : userspace build/packaging tools (M8 DKMS lifecycle).
+#   kernel  : kernel module tooling (M8 depmod, DKMS rebuild against headers).
+#   systemd : service/udev/loader tooling (M10 integration).
+#   rtdiag  : RT priority tooling (M12 chrt SCHED_FIFO priority change).
+DOCTOR_REQUIRED_tools   := dkms depmod
+DOCTOR_REQUIRED_kernel  := depmod dkms
+DOCTOR_REQUIRED_systemd := systemctl udevadm ldconfig
+DOCTOR_REQUIRED_rtdiag  := chrt
 
 # Expected kernel-headers location for the running kernel (probed read-only).
 DOCTOR_KERNEL_HEADERS := /lib/modules/$(shell uname -r)/build

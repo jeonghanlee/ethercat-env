@@ -12,9 +12,12 @@ src_install: src_version
 	$(QUIET)$(SUDO) $(INSTALL_DATA) -b $(SITE_TEMPLATE_PATH)/.versions  $(INSTALL_LOCATION)/
 	$(QUIET)$(SUDO)	chown -R $(USERID):$(GROUPID) $(INSTALL_LOCATION)
 
-# sd_stop/sd_disable/sd_clean (M10) and src_postrm (M13) return as real targets
-# in later milestones, wired through the aggregator rather than dangling here.
-src_uninstall: src_version.clean
+# sd_stop / sd_disable / sd_clean are the real systemd-lifecycle targets defined
+# in RULES_SYSTEMD (M10). They run BEFORE the prefix-tree removal so the service
+# is stopped, disabled, and its unit file cleaned before the installed files go.
+# src_postrm (M13) returns as a real target in a later milestone, wired through
+# the aggregator rather than dangling here. The rm -rf is guarded by guard-path.
+src_uninstall: sd_stop sd_disable sd_clean src_version.clean
 	$(QUIET)echo "Removing $(INSTALL_LOCATION)..."
 	$(QUIET)$(call guard-path,$(INSTALL_LOCATION))
 	$(QUIET)$(SUDO) rm -rf $(INSTALL_LOCATION)/

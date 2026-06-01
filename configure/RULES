@@ -7,7 +7,11 @@ include $(TOP)/configure/RULES_PATCH
 include $(TOP)/configure/RULES_SRC
 include $(TOP)/configure/RULES_ETHERCAT
 include $(TOP)/configure/RULES_RUNTIME
+include $(TOP)/configure/RULES_SYSTEMD
+include $(TOP)/configure/RULES_RT
+include $(TOP)/configure/RULES_RTDIAG
 include $(TOP)/configure/RULES_INSTALL
+include $(TOP)/configure/RULES_REMOVE
 include $(TOP)/configure/RULES_DRYRUN
 include $(TOP)/configure/RULES_VERIFY
 include $(TOP)/configure/RULES_VARS

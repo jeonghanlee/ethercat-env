@@ -16,7 +16,7 @@
 #   selected profile (WITH_DEV_*)  : enabled drivers -> DEVICE_MODULES
 #   -> templates/ethercat.conf.in  -> $(RUNTIME_OUTPUT)  (repo-local)
 
-.PHONY: runtime.generate runtime.lint runtime.config.show iface.status iface.prepare
+.PHONY: runtime.generate runtime.lint runtime.config.show iface.status iface.prepare iface.unprepare
 
 # Repo-local render target. NEVER /etc. Overridable via RULES_RUNTIME.local.
 RUNTIME_TEMPLATE ?= $(TOP)/templates/ethercat.conf.in
@@ -115,19 +115,55 @@ iface.status:
 		printf "iface.status: link state = unknown (interface absent or ip unavailable)\n"; \
 	fi
 
-# iface.prepare — root-affecting NIC up/down for the selected-profile interface.
-# Declared here with doctor + require-root wired in; actual up/down execution is
-# deferred to the later root-affecting phase. On this non-root pass the recipe
-# fails closed before any mutation if the interface name is empty/unresolved.
-## Bring the selected-profile NIC up/down (root-affecting; doctor + require-root)
+# iface.prepare / iface.unprepare — root-affecting NIC link control for the
+# selected-profile interface. The generic driver needs the interface UP before
+# the master starts (or all frames time out); on teardown it is brought DOWN.
+# The two targets are SYMMETRIC: iface.prepare runs "ip link set <if> up",
+# iface.unprepare runs "ip link set <if> down". A DIRECTION override
+# (DIRECTION=up | DIRECTION=down) is also honored for callers that want one
+# entry point; the default DIRECTION is "up" so a bare iface.prepare brings the
+# interface up.
+#
+# SAFETY CONTRACT:
+#   (1) doctor (ip/link tooling on a provisioned host) is a NORMAL prerequisite
+#       that exits non-zero on a missing required tool (fail-closed);
+#   (2) require-root runs as the FIRST recipe line;
+#   (3) the link change is routed through $(SUDO) ip link set;
+#   (4) FAIL-CLOSED on an empty/unresolved interface name before any mutation.
+# No path is written, so guard-path does not apply (link-state change only).
+
+# Default link direction for iface.prepare. iface.unprepare forces "down".
+DIRECTION ?= up
+
+# iface_link DIRECTION
+# Shared recipe body. $(1) is the target label for messages; the shell variable
+# $$dir carries the link direction. require-root is asserted by the caller as
+# the first recipe line; this macro performs the fail-closed interface check and
+# the single $(SUDO) ip link mutation.
+define iface_link
+	PATH="$$PATH:/usr/sbin:/sbin"; iface="$(RUNTIME_MASTER0)"; dir="$(2)"; \
+	if [ -z "$$iface" ]; then \
+		printf "$(1): FAIL — no interface resolved (ETHERCAT_MASTER0 empty, fail-closed)\n" >&2; exit 1; \
+	fi; \
+	case "$$dir" in \
+		up|down) : ;; \
+		*) printf "$(1): FAIL — invalid DIRECTION '%s' (expected up|down, fail-closed)\n" "$$dir" >&2; exit 1;; \
+	esac; \
+	printf "$(1): bringing interface %s %s\n" "$$iface" "$$dir"; \
+	$(SUDO) ip link set "$$iface" "$$dir"
+endef
+
+## Bring the selected-profile NIC up (DIRECTION=down to lower) (root-affecting; doctor + require-root)
 iface.prepare: doctor
 	$(QUIET)$(call require-root)
-	$(QUIET)iface="$(RUNTIME_MASTER0)"; \
-	if [ -z "$$iface" ]; then \
-		printf "iface.prepare: FAIL — no interface resolved (ETHERCAT_MASTER0 empty, fail-closed)\n" >&2; exit 1; \
-	fi; \
-	printf "iface.prepare: would bring interface %s up/down (execution deferred to root phase)\n" "$$iface"
+	$(QUIET)$(call iface_link,iface.prepare,$(DIRECTION))
+
+## Bring the selected-profile NIC down (symmetric teardown) (root-affecting; doctor + require-root)
+iface.unprepare: doctor
+	$(QUIET)$(call require-root)
+	$(QUIET)$(call iface_link,iface.unprepare,down)
 
 VARS_EXCLUDES+=RUNTIME_MODULES
+VARS_EXCLUDES+=iface_link
 
 -include $(TOP)/configure/RULES_RUNTIME.local

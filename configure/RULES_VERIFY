@@ -25,11 +25,57 @@
 .PHONY: verify.reproducibility verify.dryrun verify.idempotence verify.residue verify.all
 
 # Root-affecting targets in scope for the currently-applied milestones.
-VERIFY_ROOT_TARGETS      ?= iface.prepare
-# Of those, the path-prefix-write / rm targets that must also carry guard-path.
-# src_install / src_uninstall / src_version / src_version.clean carry guard-path
-# from M2/M4; iface.prepare mutates link state (no path write), so it is not here.
-VERIFY_GUARDPATH_TARGETS ?= src_install src_uninstall src_version src_version.clean
+# M9  : iface.prepare / iface.unprepare (ip link, no path write).
+# M8  : module install/uninstall + DKMS add/remove/install/uninstall. Their
+#       mutation is depmod -a / dkms, so per the M14 policy they need
+#       doctor + require-root only (no guard-path).
+# M10 : systemctl / udevadm / ldconfig service-and-loader lifecycle. enable /
+#       start / stop / disable / sd_stop / sd_disable mutate via systemctl only,
+#       so they too are doctor + require-root only (no guard-path).
+# M11 : rt.kernel.provision (apt install, no path write) and rt.service.apply
+#       (systemctl mask on the allowlist, no path write) are doctor +
+#       require-root only.
+# M13 : remove.stop / remove.disable delegate to sd_stop / sd_disable (systemctl
+#       only), so they are doctor + require-root only.
+#
+# M12 : rt.priority.apply changes scheduling class via $(SUDO) chrt (no path
+#       write), so it is doctor + require-root only. It depends on the scoped
+#       doctor.rtdiag (chrt present) for consistency with every other
+#       root-affecting target; its fail-closed named-TARGET check remains the
+#       controlling guard on WHICH process is changed.
+VERIFY_ROOT_TARGETS      ?= \
+	iface.prepare iface.unprepare \
+	install.modules uninstall.modules \
+	add.dkms remove.dkms install.dkms uninstall.dkms \
+	systemd.enable systemd.start systemd.stop systemd.disable \
+	sd_stop sd_disable \
+	rt.kernel.provision rt.service.apply \
+	rt.priority.apply \
+	remove.stop remove.disable
+# Of those, the path-prefix-write / rm targets that must ALSO carry guard-path.
+# src_* carry guard-path from M2/M4. M10 *.install / *.remove / sd_clean write or
+# remove under a path prefix (/etc/systemd/system, /etc/udev/rules.d, /usr/bin,
+# /etc/ld.so.conf.d), so each must show guard-path ahead of the write/rm.
+# M11 rt.limits.install / rt.grub.apply / rt.grub.rollback write or restore under
+# a path prefix (/etc/security/limits.d, /etc/default/grub and its backup), so
+# each must show guard-path. M13 remove.uninstall / remove.rt / remove.purge run
+# rm under a path prefix, so each must show guard-path.
+# iface.prepare / module / dkms / systemctl-only / apt-only targets write no path
+# and are intentionally absent here.
+VERIFY_GUARDPATH_TARGETS ?= \
+	src_install src_uninstall src_version src_version.clean \
+	systemd.install systemd.remove sd_clean \
+	udev.install udev.remove \
+	command.install loader.install \
+	rt.limits.install rt.grub.apply rt.grub.rollback \
+	remove.uninstall remove.rt remove.purge
+
+# The recursive dry-run captures below run with -j1. The harness is inspection-
+# only, and a parallel jobserver lets recursive sub-makes interleave and
+# occasionally drop a prerequisite's recipe line from a captured dry-run, which
+# would produce a spurious guard FAIL. Serial sub-makes make the capture
+# deterministic; correctness, not speed, governs the verification harness.
+VERIFY_DRYRUN = $(MAKE) -j1 --no-print-directory --dry-run
 
 ## Assert the pinned revision is reachable (src.verify) — non-hardware
 verify.reproducibility:
@@ -41,12 +87,12 @@ verify.reproducibility:
 verify.dryrun:
 	$(QUIET)rc=0; \
 	for t in $(VERIFY_ROOT_TARGETS); do \
-		out="$$($(MAKE) --no-print-directory --dry-run $$t 2>/dev/null)"; \
+		out="$$($(VERIFY_DRYRUN) $$t 2>/dev/null)"; \
 		if [ -z "$$out" ]; then \
 			printf "verify.dryrun: FAIL — %s produced empty dry-run\n" "$$t" >&2; rc=1; continue; \
 		fi; \
 		case "$$out" in \
-			*doctor:*) : ;; \
+			*doctor:*|*doctor[[]*) : ;; \
 			*) printf "verify.dryrun: FAIL — %s dry-run lacks a doctor reference\n" "$$t" >&2; rc=1;; \
 		esac; \
 		case "$$out" in \
@@ -56,7 +102,7 @@ verify.dryrun:
 		if [ "$$rc" -eq 0 ]; then printf "verify.dryrun: OK   — %s (doctor + require-root)\n" "$$t"; fi; \
 	done; \
 	for t in $(VERIFY_GUARDPATH_TARGETS); do \
-		out="$$($(MAKE) --no-print-directory --dry-run $$t 2>/dev/null)"; \
+		out="$$($(VERIFY_DRYRUN) $$t 2>/dev/null)"; \
 		if [ -z "$$out" ]; then \
 			printf "verify.dryrun: FAIL — %s produced empty dry-run\n" "$$t" >&2; rc=1; continue; \
 		fi; \
@@ -72,8 +118,8 @@ verify.dryrun:
 verify.idempotence:
 	$(QUIET)rc=0; \
 	for t in $(VERIFY_ROOT_TARGETS) $(VERIFY_GUARDPATH_TARGETS); do \
-		a="$$($(MAKE) --no-print-directory --dry-run $$t 2>/dev/null)"; \
-		b="$$($(MAKE) --no-print-directory --dry-run $$t 2>/dev/null)"; \
+		a="$$($(VERIFY_DRYRUN) $$t 2>/dev/null)"; \
+		b="$$($(VERIFY_DRYRUN) $$t 2>/dev/null)"; \
 		if [ "$$a" != "$$b" ]; then \
 			printf "verify.idempotence: FAIL — %s dry-run not stable across runs\n" "$$t" >&2; rc=1; \
 		else \
@@ -83,13 +129,19 @@ verify.idempotence:
 	if [ "$$rc" -ne 0 ]; then exit 1; fi; \
 	printf "verify.idempotence: OK — registered dry-runs stable\n"
 
+# remove.audit emits a single machine-readable final verdict line
+# (remove.audit: VERDICT=clean | VERDICT=residue). The matcher keys on that
+# verdict, NOT on a substring scan of the whole report — the report header and
+# per-item lines legitimately contain the word "residue", so a substring scan
+# would false-positive on a clean run.
 ## Assert remove.audit (M13) reports no residue; skip cleanly until M13 lands
 verify.residue:
 	$(QUIET)if $(MAKE) --no-print-directory -n remove.audit >/dev/null 2>&1; then \
-		out="$$($(MAKE) --no-print-directory remove.audit 2>/dev/null)"; \
-		case "$$out" in \
-			*residue*|*RESIDUE*) printf "verify.residue: FAIL — remove.audit reports residue\n" >&2; exit 1;; \
-			*) printf "verify.residue: OK — remove.audit reports no residue\n";; \
+		verdict="$$($(MAKE) --no-print-directory remove.audit 2>/dev/null | sed -n 's/^remove.audit: VERDICT=//p')"; \
+		case "$$verdict" in \
+			clean)   printf "verify.residue: OK — remove.audit reports no residue\n";; \
+			residue) printf "verify.residue: FAIL — remove.audit reports residue\n" >&2; exit 1;; \
+			*)       printf "verify.residue: FAIL — remove.audit emitted no parseable VERDICT\n" >&2; exit 1;; \
 		esac; \
 	else \
 		printf "verify.residue: SKIP — remove.audit not defined yet (M13 pending)\n"; \
@@ -98,5 +150,7 @@ verify.residue:
 ## Umbrella regression gate over the harness
 verify.all: verify.reproducibility verify.dryrun verify.idempotence verify.residue
 	$(QUIET)printf "verify.all: OK — repository-local verification harness passed\n"
+
+VARS_EXCLUDES += VERIFY_DRYRUN
 
 -include $(TOP)/configure/RULES_VERIFY.local
