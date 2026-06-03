@@ -2,7 +2,7 @@
 #
 #  EtherCAT master systemd service (EPICS deployment flavor).
 #
-#  GENERATED FILE — do not edit by hand.
+#  GENERATED FILE - do not edit by hand.
 #  Rendered by `make systemd.install` from templates/epics-ethercat.service.in.
 #  Parameter source: configure/CONFIG_SITE / RULES_SYSTEMD.
 #

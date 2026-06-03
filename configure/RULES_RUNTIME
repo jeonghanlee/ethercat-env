@@ -1,4 +1,4 @@
-# RULES_RUNTIME — runtime ethercat.conf generator, lint, and NIC status (M9).
+# RULES_RUNTIME - runtime ethercat.conf generator, lint, and NIC status (M9).
 #
 # runtime.generate renders templates/ethercat.conf.in into a REPOSITORY-LOCAL
 # output path. It never writes to /etc/ethercat.conf; installation into /etc is
@@ -53,14 +53,11 @@ endif
 ifeq ($(WITH_DEV_R8169),YES)
 RUNTIME_MODULES += r8169
 endif
-ifeq ($(WITH_DEV_CCAT),YES)
-RUNTIME_MODULES += ccat
-endif
 
 ## Render ethercat.conf from the template into the repo-local build path
 runtime.generate:
 	$(QUIET)if [ ! -f "$(RUNTIME_TEMPLATE)" ]; then \
-		printf "runtime.generate: FAIL — template not found: %s\n" "$(RUNTIME_TEMPLATE)" >&2; exit 1; \
+		printf "runtime.generate: FAIL - template not found: %s\n" "$(RUNTIME_TEMPLATE)" >&2; exit 1; \
 	fi
 	$(QUIET)mkdir -p "$(RUNTIME_BUILD)"
 	$(QUIET)sed \
@@ -69,13 +66,13 @@ runtime.generate:
 		-e 's|@DEVICE_MODULES@|$(strip $(RUNTIME_MODULES))|g' \
 		-e 's|@UPDOWN_INTERFACES@|$(strip $(RUNTIME_UPDOWN))|g' \
 		"$(RUNTIME_TEMPLATE)" > "$(RUNTIME_OUTPUT)"
-	$(QUIET)printf "runtime.generate: OK — wrote %s\n" "$(RUNTIME_OUTPUT)"
+	$(QUIET)printf "runtime.generate: OK - wrote %s\n" "$(RUNTIME_OUTPUT)"
 
 ## Validate the generated config: required keys present and non-empty master
 runtime.lint:
 	$(QUIET)out="$(RUNTIME_OUTPUT)"; \
 	if [ ! -f "$$out" ]; then \
-		printf "runtime.lint: FAIL — generated config not found: %s (run runtime.generate)\n" "$$out" >&2; exit 1; \
+		printf "runtime.lint: FAIL - generated config not found: %s (run runtime.generate)\n" "$$out" >&2; exit 1; \
 	fi; \
 	fail=""; \
 	for key in MASTER0_DEVICE DEVICE_MODULES UPDOWN_INTERFACES; do \
@@ -88,9 +85,9 @@ runtime.lint:
 		fail="$$fail MASTER0_DEVICE(empty)"; \
 	fi; \
 	if [ -n "$$fail" ]; then \
-		printf "runtime.lint: FAIL —%s\n" "$$fail" >&2; exit 1; \
+		printf "runtime.lint: FAIL -%s\n" "$$fail" >&2; exit 1; \
 	fi; \
-	printf "runtime.lint: OK — required keys present, master device=%s\n" "$$master"
+	printf "runtime.lint: OK - required keys present, master device=%s\n" "$$master"
 
 ## Print the generated ethercat.conf (read-only)
 runtime.config.show:
@@ -115,7 +112,7 @@ iface.status:
 		printf "iface.status: link state = unknown (interface absent or ip unavailable)\n"; \
 	fi
 
-# iface.prepare / iface.unprepare — root-affecting NIC link control for the
+# iface.prepare / iface.unprepare - root-affecting NIC link control for the
 # selected-profile interface. The generic driver needs the interface UP before
 # the master starts (or all frames time out); on teardown it is brought DOWN.
 # The two targets are SYMMETRIC: iface.prepare runs "ip link set <if> up",
@@ -143,23 +140,23 @@ DIRECTION ?= up
 define iface_link
 	PATH="$$PATH:/usr/sbin:/sbin"; iface="$(RUNTIME_MASTER0)"; dir="$(2)"; \
 	if [ -z "$$iface" ]; then \
-		printf "$(1): FAIL — no interface resolved (ETHERCAT_MASTER0 empty, fail-closed)\n" >&2; exit 1; \
+		printf "$(1): FAIL - no interface resolved (ETHERCAT_MASTER0 empty, fail-closed)\n" >&2; exit 1; \
 	fi; \
 	case "$$dir" in \
 		up|down) : ;; \
-		*) printf "$(1): FAIL — invalid DIRECTION '%s' (expected up|down, fail-closed)\n" "$$dir" >&2; exit 1;; \
+		*) printf "$(1): FAIL - invalid DIRECTION '%s' (expected up|down, fail-closed)\n" "$$dir" >&2; exit 1;; \
 	esac; \
 	printf "$(1): bringing interface %s %s\n" "$$iface" "$$dir"; \
 	$(SUDO) ip link set "$$iface" "$$dir"
 endef
 
 ## Bring the selected-profile NIC up (DIRECTION=down to lower) (root-affecting; doctor + require-root)
-iface.prepare: doctor
+iface.prepare: doctor.network
 	$(QUIET)$(call require-root)
 	$(QUIET)$(call iface_link,iface.prepare,$(DIRECTION))
 
 ## Bring the selected-profile NIC down (symmetric teardown) (root-affecting; doctor + require-root)
-iface.unprepare: doctor
+iface.unprepare: doctor.network
 	$(QUIET)$(call require-root)
 	$(QUIET)$(call iface_link,iface.unprepare,down)
 

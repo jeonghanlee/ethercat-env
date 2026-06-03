@@ -22,7 +22,6 @@ GROUPID:=$(shell id -gn)
 # option:  --enable-r8169          Enable r8169 driver
 #       :  --enable-stmmac-pci     Enable stmmac driver
 #       : --enable-dwmac-intel    Enable stmmac driver
-# option: --enable-ccat           Enable CCAT driver
 #       : --enable-rtdm           Enable RTDM interface, depends on RTAI or Xenomai
 #       : --enable-debug-if       Create a debug interface for each master [NO]
 #       : --enable-debug-ring     Create a debug ring to record frames [NO]
@@ -42,7 +41,6 @@ WITH_DEV_GENERIC:=YES
 # profile.check (RULES_PROFILE) fails closed if a native flag is enabled
 # without matching kernel + upstream-source driver evidence.
 WITH_DEV_R8169:=NO
-#WITH_DEV_CCAT:=NO
 
 ENABLE_STATIC:=YES
 ENABLE_SHARED:=YES
@@ -76,7 +74,7 @@ ENABLE_RT_SYSLOG:=YES
 
 
 # ---------------------------------------------------------------------------
-# M10 — systemd / udev / command-path / loader integration parameters.
+# M10 - systemd / udev / command-path / loader integration parameters.
 #
 # Site-tunable surface consumed by RULES_SYSTEMD. Templates under templates/
 # render against these values into a repo-local STAGING path first; only the
@@ -103,6 +101,7 @@ ECAT_DEV_MODE     ?= 0660
 # pointing at the prefix-tree binary COMMAND_TARGET.
 COMMAND_TARGET    ?= $(INSTALL_LOCATION)/bin/ethercat
 COMMAND_LINK      ?= /usr/bin/ethercat
+COMMAND_LINK_GUARD ?= /usr/bin/ethercat
 
 # Loader. ldconfig integration drops a conf fragment naming the prefix-tree
 # libdir so the runtime linker finds libethercat.

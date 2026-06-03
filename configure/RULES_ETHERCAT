@@ -1,6 +1,6 @@
 .PHONY: autoconf src_init src_autoconf build.baseline host.debian13
 
-# build.baseline — order-only umbrella documenting the reproducible build path
+# build.baseline - order-only umbrella documenting the reproducible build path
 # as one named entry point: verify the pinned revision (M2) BEFORE configure,
 # then run the existing autoconf -> build -> build.modules sequence. The
 # prerequisites are listed in build order; src.verify is first so a moved
@@ -8,9 +8,9 @@
 # every step is configure/build inside $(SRC_PATH); no install.
 ## Reproducible build path: src.verify then autoconf, build, build.modules
 build.baseline: src.verify autoconf build build.modules
-	$(QUIET)printf "build.baseline: OK — verified revision configured, built, and modules built\n"
+	$(QUIET)printf "build.baseline: OK - verified revision configured, built, and modules built\n"
 
-# host.debian13 — non-fatal report of detected OS name/version against the
+# host.debian13 - non-fatal report of detected OS name/version against the
 # Debian 13 expectation recorded in CONFIG_SRC. This is the lightweight
 # report only; the hard fail belongs to the M5 doctor layer. It never exits
 # non-zero, so it does not gate the tree.
@@ -60,7 +60,7 @@ clean:
 	$(DO_MAKE) clean
 
 # ---------------------------------------------------------------------------
-# M8 — Kernel module lifecycle.
+# M8 - Kernel module lifecycle.
 #
 # Delegated decision D1: DKMS is the recorded PRODUCTION lifecycle (modules
 # auto-rebuild on a Debian 13 kernel update). build.modules / install.modules
@@ -72,13 +72,13 @@ clean:
 #   (2) require-root runs as the FIRST recipe line;
 #   (3) every host mutation (dkms install/add/remove, make modules install/
 #       uninstall, depmod -a) is routed through $(SUDO);
-#   (4) depmod -a is never bare — it always runs as $(SUDO) depmod -a after the
+#   (4) depmod -a is never bare - it always runs as $(SUDO) depmod -a after the
 #       doctor + require-root preconditions.
 # Non-root targets (build.modules, build.dkms, dkms.conf, module.lifecycle)
 # touch only the source tree and carry no require-root.
 # ---------------------------------------------------------------------------
 
-# Modules — DEVELOPER build path (non-root: builds inside $(SRC_PATH) only).
+# Modules - DEVELOPER build path (non-root: builds inside $(SRC_PATH) only).
 build.modules:
 	$(DO_MAKE) modules
 
@@ -100,17 +100,17 @@ uninstall.modules: doctor.kernel
 
 # DKMS lifecycle.
 #
-# dkms.conf — NON-ROOT. Generates the DKMS metadata file INTO the source tree
+# dkms.conf - NON-ROOT. Generates the DKMS metadata file INTO the source tree
 # ($(DKMS_CONF)), not into /var/lib/dkms or /usr/src. Built-module entries are
 # emitted per enabled device profile (index 1..N), after the static master
 # module (index 0) carried by the template.
 ## Generate dkms.conf into the source tree from MODULE_NAME / MODULE_VERSION (non-root)
 dkms.conf:
 	$(QUIET)if [ ! -f "$(DKMS_CONF_TEMPLATE)" ]; then \
-		printf "dkms.conf: FAIL — template not found: %s\n" "$(DKMS_CONF_TEMPLATE)" >&2; exit 1; \
+		printf "dkms.conf: FAIL - template not found: %s\n" "$(DKMS_CONF_TEMPLATE)" >&2; exit 1; \
 	fi
 	$(QUIET)if [ ! -d "$(DKMS_SRC_TREE)" ]; then \
-		printf "dkms.conf: FAIL — source tree not found: %s (run make init)\n" "$(DKMS_SRC_TREE)" >&2; exit 1; \
+		printf "dkms.conf: FAIL - source tree not found: %s (run make init)\n" "$(DKMS_SRC_TREE)" >&2; exit 1; \
 	fi
 	$(QUIET)idx=0; devlines=""; \
 	for d in $(strip $(DKMS_DEVICE_MODULES)); do \
@@ -124,9 +124,9 @@ dkms.conf:
 		-e 's|@MODULE_VERSION@|$(MODULE_VERSION)|g' \
 		-e "s|@BUILT_DEVICE_MODULES@|$$devlines|" \
 		"$(DKMS_CONF_TEMPLATE)" | sed -e 's|\\n|\n|g' > "$(DKMS_CONF)"
-	$(QUIET)printf "dkms.conf: OK — wrote %s (-m %s -v %s)\n" "$(DKMS_CONF)" "$(MODULE_NAME)" "$(MODULE_VERSION)"
+	$(QUIET)printf "dkms.conf: OK - wrote %s (-m %s -v %s)\n" "$(DKMS_CONF)" "$(MODULE_NAME)" "$(MODULE_VERSION)"
 
-# build.dkms — NON-ROOT developer convenience: builds the registered module via
+# build.dkms - NON-ROOT developer convenience: builds the registered module via
 # DKMS without installing it. No host module tree is touched, so no require-root.
 build.dkms:
 	$(DKMS) build -m $(MODULE_NAME) -v $(MODULE_VERSION)
@@ -154,9 +154,9 @@ uninstall.dkms: doctor.kernel
 	$(SUDO) $(DKMS) uninstall -m $(MODULE_NAME) -v $(MODULE_VERSION)
 	$(QUIET)$(SUDO) depmod -a
 
-# module.lifecycle — NON-ROOT, read-only. Prints the recorded strategy (DKMS per
+# module.lifecycle - NON-ROOT, read-only. Prints the recorded strategy (DKMS per
 # D1) and the kernel-update rebuild expectation, plus the developer-path note.
-## Print the recorded module lifecycle strategy (DKMS) — read-only
+## Print the recorded module lifecycle strategy (DKMS) - read-only
 module.lifecycle:
 	$(QUIET)printf "module.lifecycle: recorded strategy = DKMS (delegated decision D1)\n"
 	$(QUIET)printf "  module identity      : -m %s -v %s\n" "$(MODULE_NAME)" "$(MODULE_VERSION)"

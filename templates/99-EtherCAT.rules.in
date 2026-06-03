@@ -2,7 +2,7 @@
 #
 #  udev rule for the EtherCAT master character device(s).
 #
-#  GENERATED FILE — do not edit by hand.
+#  GENERATED FILE - do not edit by hand.
 #  Rendered by `make udev.install` from templates/99-EtherCAT.rules.in.
 #  Parameter source: configure/CONFIG_SITE / RULES_SYSTEMD
 #  (EtherCAT device access group and mode).

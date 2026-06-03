@@ -1,6 +1,6 @@
 # EtherCAT master DKMS configuration.
 #
-# GENERATED FILE — do not edit by hand.
+# GENERATED FILE - do not edit by hand.
 # Rendered by `make dkms.conf` from templates/dkms.conf.in.
 # Source identity comes from configure/CONFIG_MODULE (MODULE_NAME, MODULE_VERSION)
 # and the resolved device profile (selected WITH_DEV_* drivers).
@@ -13,8 +13,8 @@ PACKAGE_VERSION="@MODULE_VERSION@"
 
 # Build the modules out of the upstream tree. autoreconf + configure run during
 # `make autoconf`; DKMS invokes the kernel module build for the running kernel.
-MAKE[0]="make -C master modules KDIR=/lib/modules/${kernelver}/build"
-CLEAN="make -C master clean"
+MAKE[0]="make modules KDIR=/lib/modules/${kernelver}/build"
+CLEAN="make clean"
 
 # Built module set. Index 0 is the always-present master module; the device
 # driver entries below are emitted by `make dkms.conf` for each enabled profile.

@@ -1,4 +1,4 @@
-# RULES_DRYRUN — uniform dry-run entry point and structural target listing.
+# RULES_DRYRUN - uniform dry-run entry point and structural target listing.
 #
 # This is a thin, non-root inspection layer. Nothing here mutates host state
 # or the source tree; it only re-invokes make in dry-run mode or prints the

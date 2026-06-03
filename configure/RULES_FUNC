@@ -125,15 +125,15 @@ define verify_revision
 	expected="$(1)"; \
 	observed="$$(git -C $(2) describe --tags 2>/dev/null)"; \
 	if [ -z "$$expected" ]; then \
-		printf "src.verify: FAIL — SRC_HASH is empty (fail-closed)\n" >&2; exit 1; \
+		printf "src.verify: FAIL - SRC_HASH is empty (fail-closed)\n" >&2; exit 1; \
 	fi; \
 	if [ -z "$$observed" ]; then \
-		printf "src.verify: FAIL — observed revision is empty at %s (fail-closed)\n" "$(2)" >&2; exit 1; \
+		printf "src.verify: FAIL - observed revision is empty at %s (fail-closed)\n" "$(2)" >&2; exit 1; \
 	fi; \
 	if [ "$$expected" != "$$observed" ]; then \
-		printf "src.verify: FAIL — expected %s but observed %s\n" "$$expected" "$$observed" >&2; exit 1; \
+		printf "src.verify: FAIL - expected %s but observed %s\n" "$$expected" "$$observed" >&2; exit 1; \
 	fi; \
-	printf "src.verify: OK — revision %s matches SRC_HASH\n" "$$observed"
+	printf "src.verify: OK - revision %s matches SRC_HASH\n" "$$observed"
 endef
 
 

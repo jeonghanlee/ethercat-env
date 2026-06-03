@@ -48,17 +48,6 @@ else
 ETHERCAT_OPTIONS+=--disable-r8169
 endif
 
-## Tested
-## Native CCAT needs the convert-ccat-to-mfd.patch
-## So, the option should be used as -ccat_netdev instead of -ccat
-## Thursday, November 28 23:42:05 CET 2019, jhlee
-##
-ifeq ($(WITH_DEV_CCAT),YES)
-ETHERCAT_OPTIONS+=--enable-ccat_netdev
-else
-ETHERCAT_OPTIONS+=--disable-ccat
-endif
-
 ## Other Options
 ##
 ifeq ($(ENABLE_STATIC),YES)
@@ -145,5 +134,4 @@ else
 ETHERCAT_OPTIONS+=--enable-rtmutex=no
 endif
 endif
-
 

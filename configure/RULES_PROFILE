@@ -1,4 +1,4 @@
-# RULES_PROFILE — device-profile support matrix and the native-profile
+# RULES_PROFILE - device-profile support matrix and the native-profile
 # evidence gate.
 #
 # profile.matrix is read-only: it reports, per device flag, whether the flag
@@ -44,8 +44,7 @@ PROFILE_DEVICES := \
 	e1000:$(WITH_DEV_E1000):e1000 \
 	e1000e:$(WITH_DEV_E1000E):e1000e \
 	igb:$(WITH_DEV_IGB):igb \
-	r8169:$(WITH_DEV_R8169):r8169 \
-	ccat:$(WITH_DEV_CCAT):ccat
+	r8169:$(WITH_DEV_R8169):r8169
 
 # profile_evidence NAME BASENAME
 # Echo "generic", "present", or "absent" for the upstream-source driver
@@ -105,10 +104,10 @@ profile.check:
 		fi; \
 	done; \
 	if [ -n "$$failed" ]; then \
-		printf "profile.check: FAIL — enabled profile(s) without evidence:%s (fail-closed)\n" "$$failed" >&2; \
+		printf "profile.check: FAIL - enabled profile(s) without evidence:%s (fail-closed)\n" "$$failed" >&2; \
 		exit 1; \
 	fi; \
-	printf "profile.check: OK — every enabled profile has kernel + source evidence\n"
+	printf "profile.check: OK - every enabled profile has kernel + source evidence\n"
 
 VARS_EXCLUDES+=profile_evidence
 

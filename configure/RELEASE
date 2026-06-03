@@ -23,6 +23,8 @@ SRC_VERSION=${SRC_TAG}
 # at the filesystem root. A site override may point this elsewhere via
 # RELEASE.local.
 SITE_TEMPLATE_PATH:=$(TOP)
+SITE_VERSION_FILE ?= $(SITE_TEMPLATE_PATH)/.versions
+SITE_VERSION_GUARD ?= $(TOP)/.versions
 
 
 -include $(TOP)/../RELEASE.local

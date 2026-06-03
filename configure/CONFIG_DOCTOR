@@ -1,4 +1,4 @@
-# CONFIG_DOCTOR — expected host tool inventory for the doctor target.
+# CONFIG_DOCTOR - expected host tool inventory for the doctor target.
 #
 # This file declares only variable surface (tool names and the required set);
 # the probing recipe lives in RULES_DOCTOR. No tool is installed here.
@@ -13,27 +13,63 @@ DOCTOR_TOOL_udevadm    := udevadm
 DOCTOR_TOOL_ldconfig   := ldconfig
 DOCTOR_TOOL_git        := git
 DOCTOR_TOOL_make       := make
+DOCTOR_TOOL_ip         := ip
+DOCTOR_TOOL_pkg_manager = $(RT_PKG_MANAGER)
+DOCTOR_TOOL_dpkg       := dpkg
+DOCTOR_TOOL_chrt       := chrt
+DOCTOR_TOOL_install    := install
+DOCTOR_TOOL_chown      := chown
+DOCTOR_TOOL_rm         := rm
+DOCTOR_TOOL_ln         := ln
+DOCTOR_TOOL_cp         := cp
+DOCTOR_TOOL_grep       := grep
+DOCTOR_TOOL_sed        := sed
+DOCTOR_TOOL_groupadd   := groupadd
+DOCTOR_TOOL_groupdel   := groupdel
+DOCTOR_TOOL_getent     := getent
+DOCTOR_TOOL_mktemp     := mktemp
+
+DOCTOR_TOOL_EXPORTS := \
+	DOCTOR_TOOL_autoreconf DOCTOR_TOOL_depmod DOCTOR_TOOL_dkms \
+	DOCTOR_TOOL_update_grub DOCTOR_TOOL_systemctl DOCTOR_TOOL_udevadm \
+	DOCTOR_TOOL_ldconfig DOCTOR_TOOL_git DOCTOR_TOOL_make DOCTOR_TOOL_ip \
+	DOCTOR_TOOL_pkg_manager DOCTOR_TOOL_dpkg DOCTOR_TOOL_chrt \
+	DOCTOR_TOOL_install DOCTOR_TOOL_chown DOCTOR_TOOL_rm DOCTOR_TOOL_ln \
+	DOCTOR_TOOL_cp DOCTOR_TOOL_grep DOCTOR_TOOL_sed DOCTOR_TOOL_groupadd \
+	DOCTOR_TOOL_groupdel DOCTOR_TOOL_getent DOCTOR_TOOL_mktemp
+export $(DOCTOR_TOOL_EXPORTS)
 
 # The set of tools the bare "doctor" target treats as REQUIRED. A missing
 # member here makes "doctor" exit non-zero (fail-closed). Scoped sub-doctors
 # require narrower subsets so a root-affecting target can depend on only the
 # doctor scope it needs.
-DOCTOR_REQUIRED := autoreconf depmod dkms systemctl udevadm ldconfig git make
+DOCTOR_REQUIRED := autoreconf depmod dkms systemctl udevadm ldconfig git make ip update_grub pkg_manager dpkg chrt
 
 # Scoped required subsets (consumed by doctor.tools / doctor.kernel /
-# doctor.systemd in RULES_DOCTOR). Each scoped doctor exits non-zero on any
+# doctor.systemd / doctor.network / doctor.grub / doctor.package /
+# doctor.install in RULES_DOCTOR). Each scoped doctor exits non-zero on any
 # missing member of its own subset, so a root-affecting target depends only on
 # the scope it actually uses.
 #   tools   : userspace build/packaging tools (M8 DKMS lifecycle).
 #   kernel  : kernel module tooling (M8 depmod, DKMS rebuild against headers).
 #   systemd : service/udev/loader tooling (M10 integration).
+#   network : link-state tooling for EtherCAT NIC preparation.
+#   grub    : GRUB edit/rollback tools, including update-grub before mutation.
+#   package : configured package manager and package-status inspection.
+#   install : prefix-tree install/remove and RT limits/group tools.
 #   rtdiag  : RT priority tooling (M12 chrt SCHED_FIFO priority change).
 DOCTOR_REQUIRED_tools   := dkms depmod
 DOCTOR_REQUIRED_kernel  := depmod dkms
 DOCTOR_REQUIRED_systemd := systemctl udevadm ldconfig
+DOCTOR_REQUIRED_network := ip
+DOCTOR_REQUIRED_grub    := update_grub grep sed cp rm
+DOCTOR_REQUIRED_package := pkg_manager dpkg
+DOCTOR_REQUIRED_install := install chown rm ln groupadd groupdel getent mktemp
 DOCTOR_REQUIRED_rtdiag  := chrt
 
 # Expected kernel-headers location for the running kernel (probed read-only).
 DOCTOR_KERNEL_HEADERS := /lib/modules/$(shell uname -r)/build
+
+VARS_EXCLUDES += DOCTOR_TOOL_EXPORTS
 
 -include $(TOP)/configure/CONFIG_DOCTOR.local

@@ -1,4 +1,4 @@
-# CONFIG_RT — Debian 13 real-time host configuration variable surface (M11).
+# CONFIG_RT - Debian 13 real-time host configuration variable surface (M11).
 #
 # This file declares ONLY variable surface for the RT host configuration:
 # RT kernel/header package names, the realtime group, the limits.d policy file
@@ -62,6 +62,8 @@ RT_LIMITS_RULES   ?= $(RT_LIMITS_RULE_1)|$(RT_LIMITS_RULE_2)|$(RT_LIMITS_RULE_3)
 # Both the file and its backup are PATH PREFIX targets wrapped with guard-path.
 RT_GRUB_FILE      ?= /etc/default/grub
 RT_GRUB_BACKUP    ?= /etc/default/grub.ethercat-rt.bak
+RT_GRUB_FILE_GUARD ?= /etc/default/grub
+RT_GRUB_BACKUP_GUARD ?= /etc/default/grub.ethercat-rt.bak
 
 # The kernel command-line parameters appended for RT isolation. isolcpus /
 # nohz_full / rcu_nocbs are placeholders a site tunes to its CPU topology in

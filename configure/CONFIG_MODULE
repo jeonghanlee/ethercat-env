@@ -1,4 +1,4 @@
-# CONFIG_MODULE — kernel-module identity and DKMS source-tree variables (M8).
+# CONFIG_MODULE - kernel-module identity and DKMS source-tree variables (M8).
 #
 # Delegated decision D1: DKMS is the recorded PRODUCTION lifecycle so kernel
 # modules auto-rebuild on a Debian 13 kernel update. The direct
@@ -46,7 +46,7 @@ DKMS_USR_SRC    = /usr/src/$(MODULE_NAME)-$(MODULE_VERSION)
 # dkms.conf generation template (rendered by the non-root dkms.conf target).
 DKMS_CONF_TEMPLATE := $(TOP)/templates/dkms.conf.in
 
-# DKMS_DEVICE_MODULES — the upstream device-driver basenames for each enabled
+# DKMS_DEVICE_MODULES - the upstream device-driver basenames for each enabled
 # WITH_DEV_* profile, in profile order. The dkms.conf target turns each into an
 # ec_<name> BUILT_MODULE_NAME entry (index 1..N) after the static ec_master
 # (index 0). The set mirrors the profile resolution in RULES_RUNTIME so the DKMS
@@ -74,9 +74,6 @@ DKMS_DEVICE_MODULES += igb
 endif
 ifeq ($(WITH_DEV_R8169),YES)
 DKMS_DEVICE_MODULES += r8169
-endif
-ifeq ($(WITH_DEV_CCAT),YES)
-DKMS_DEVICE_MODULES += ccat
 endif
 
 VARS_EXCLUDES+=DKMS_DEVICE_MODULES

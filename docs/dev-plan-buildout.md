@@ -279,16 +279,18 @@ after this.
 - `doctor` — verify each tool in `CONFIG_DOCTOR` exists and is executable; report
   present/absent per tool; read-only, never installs anything. Non-zero exit when
   a required tool for the requested operation is missing.
-- `doctor.tools` / `doctor.kernel` / `doctor.systemd` — scoped sub-reports so a
-  root-affecting target can depend only on the doctor scope it needs.
+- `doctor.tools` / `doctor.kernel` / `doctor.systemd` / `doctor.network` /
+  `doctor.grub` / `doctor.package` / `doctor.install` / `doctor.rtdiag` -
+  scoped sub-reports so a root-affecting target can depend only on the doctor
+  scope it needs.
 - Guard macros (not user targets, consumed by other targets):
   - `guard-path` — assert a path variable is non-empty, absolute, and under an
     expected prefix before any `rm -rf` or install.
   - `require-root` — run as the first line of every root-affecting recipe;
     assert the operation is being run with the privilege it needs (or routed
-    through `$(SUDO)`), and fail closed before any partial change. `doctor` (or a
-    scoped `doctor.kernel`/`doctor.tools`/`doctor.systemd`) is the companion hard
-    prerequisite whose recipe exits non-zero on any missing required tool.
+    through `$(SUDO)`), and fail closed before any partial change. `doctor` or a
+    scoped doctor is the companion hard prerequisite whose recipe exits non-zero
+    on any missing required tool.
 
 **(c) Classification** — `doctor` itself is non-root (read-only probing). The
 guard macros are the safety layer for the root-affecting milestones.
@@ -518,8 +520,9 @@ Depends on M5, M8, M9. Root-affecting; `doctor` precedes it.
 - `udev.install` / `udev.remove` — udev rule lifecycle.
 - `command.install` / `command.audit` — `/usr/bin/ethercat` exposure and discovery.
 - `loader.install` / `loader.audit` — `ldconfig` loader integration and audit.
-- `runtime.status` — report userspace binary state, service state, loaded module
-  state, configured master devices, and selected profile independently. Read-only.
+- `runtime.status` — report userspace binary state, command link, loader
+  fragment, service state, udev rule, loaded module state, configured master
+  devices, and selected profile independently. Read-only.
 - `sd_stop` / `sd_disable` / `sd_clean` — the previously-dangling prerequisites,
   now real, consumed by M13 removal.
 
@@ -539,7 +542,8 @@ target copies into the system location.
 - `make --dry-run systemd.install` shows the unit being staged then copied, with
   `doctor` ahead.
 - `make --dry-run udev.install` shows the rule path and reload command.
-- `make runtime.status` runs read-only and reports the five independent states.
+- `make runtime.status` runs read-only and reports the independent runtime
+  integration states.
 - `make --dry-run src_uninstall` resolves (no more undefined `sd_*`).
 
 ---
@@ -747,6 +751,8 @@ Depends on M4, M5. Begins after M5; acts as the regression gate for M8–M13.
   `guard-path`).
 - `verify.idempotence` — assert that repeated dry-run output for install/apply
   targets is stable (no spurious diffs).
+- `verify.doctor-overrides` — assert that broken tool overrides fail the
+  relevant scoped doctor before any guarded target can begin.
 - `verify.residue` — assert `remove.audit` reports no residue after a dry-run
   removal sequence.
 - `verify.all` — umbrella over the above; the regression gate for M8–M13.
@@ -766,6 +772,8 @@ targets are checked for `doctor` + `require-root` only, not `guard-path`.
 - `make verify.all` runs entirely dry-run / read-only and exits non-zero on a
   regression.
 - `make verify.dryrun` flags any root-affecting target missing its guard.
+- `make verify.doctor-overrides` flags any scoped doctor that accepts a broken
+  tool override.
 - `make help` lists the `verify.*` targets.
 
 ---
@@ -784,6 +792,24 @@ milestone that owns the file, not given their own milestone:
   branches in `CONFIG_SRC` — cleanup vs keep-as-historical is deferred to the
   user as an explicit decision, not silently removed.
 
+## Revision 2 Hardening Addendum
+
+Revision 2 closes repository-local defects found after the Revision 1 target
+graph was implemented. It does not add VM or hardware evidence; those remain the
+R2-12 and R2-13 external gates.
+
+| Area | Implemented contract | Repository-local verification |
+| --- | --- | --- |
+| Device profile scope | The retired native profile branch is removed from configure options, profile matrix, runtime module resolution, DKMS metadata, templates, and legacy documentation rows. | `make print-ETHERCAT_OPTIONS`, `make profile.matrix`, and `make runtime.config.show` show no retired profile token. |
+| Path safety | `guard-path` requires an expected prefix or exact file path. Exact guards protect `/usr/bin/ethercat`, `/etc/default/grub`, the GRUB backup, and `$(TOP)/.versions`; prefix guards protect install, systemd, udev, loader, and limits paths. | Negative dry-runs with `/etc/passwd` and `/tmp/not-ethercat` fail before mutation lines. |
+| Root guards | `src_install` and `src_uninstall` are scoped-doctor, `require-root`, and `guard-path` targets. `src_version` and `src_version.clean` remain repo-local exact-file guard targets without root guards. | `make verify.dryrun` checks both classes and reports the repo-local exceptions explicitly. |
+| Tool doctors | Scoped doctors cover `ip`, `update-grub`, the configured package manager, `dpkg`, `chrt`, and install/remove helpers. | `make verify.doctor-overrides` proves broken tool overrides fail closed. |
+| DKMS consistency | `dkms.conf` uses the upstream top-level module build path so the DKMS build command matches the declared master and device module set. | `make dkms.conf` emits `MAKE[0]="make modules KDIR=/lib/modules/${kernelver}/build"` and device module entries for enabled profiles. |
+| Runtime status | `runtime.status` reports userspace tool, command link, loader fragment, service, udev rule, master module, master devices, and selected device modules separately. | `make runtime.status` is read-only and reports each state independently. |
+| RT removal | `remove.rt` does not require `rt.grub.rollback` as a prerequisite. Missing backups are reported separately while limits and service cleanup remain reachable. | `make --dry-run remove.rt` is idempotent for a never-applied host and does not execute root commands. |
+| ASCII output | Makefiles, templates, examples, README, patch metadata, and generated command output use ASCII punctuation. | `rg -nP "[^\\x00-\\x7F]" Makefile configure templates patch examples README.md .gitignore` reports no matches. |
+| Regression gate | R2 extends the harness with root/guard union checks and broken-doctor override checks. | `make verify.all`, `make profile.matrix`, `make patch.status`, `make runtime.status`, `make rt.status`, and `make remove.audit` pass repository-locally. |
+
 ## Open Risks
 
 1. **Reference repositories not yet cloned.** M1 acceptance rows must be checked
@@ -794,10 +820,9 @@ milestone that owns the file, not given their own milestone:
    `1.6.9-4-g46cc20e6` pins `stable-1.6` today; if upstream advances the branch,
    `src.verify` will fail by design and the pin must be consciously updated, not
    silently bumped.
-3. **DKMS lifecycle (D1) vs direct modules.** Keeping both paths risks drift
-   between what the developer builds (`build.modules`) and what production
-   rebuilds (DKMS). M14 `verify.*` should assert the two produce the same module
-   set, but full proof needs the M16 kernel-update hardware gate.
+3. **DKMS lifecycle (D1) vs direct modules.** R2 aligns the DKMS build command
+   with the upstream top-level module build path, but full proof of rebuild
+   behavior still needs the M16 kernel-update hardware gate.
 4. **RT boot default left to the operator (D2).** The repository provisions the
    RT kernel but does not select it at boot; a host can be "provisioned but not
    running RT" with no repository-visible failure. The post-reboot confirmation

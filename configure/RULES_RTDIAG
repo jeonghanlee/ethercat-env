@@ -1,4 +1,4 @@
-# RULES_RTDIAG — RT priority helper and latency-tool classification (M12).
+# RULES_RTDIAG - RT priority helper and latency-tool classification (M12).
 #
 # Depends on M11. Delegated decision D3: latency tools (cyclictest and similar)
 # are ARCHIVE / EXAMPLES ONLY. They are never an active runtime input and never
@@ -9,7 +9,7 @@
 # SAFETY CONTRACT for the one root-affecting target (rt.priority.apply):
 #   (1) require-root runs as the FIRST recipe line;
 #   (2) the priority change is routed through $(SUDO) chrt;
-#   (3) FAIL-CLOSED on an empty or wildcard TARGET before any mutation — an
+#   (3) FAIL-CLOSED on an empty or wildcard TARGET before any mutation - an
 #       explicit named process or IRQ thread is mandatory.
 # No path is written, so guard-path does not apply (scheduling-priority change
 # only). doctor.rtdiag is wired as a NORMAL prerequisite so the chrt tool is
@@ -25,7 +25,7 @@
 
 # Resolved priority parameters. TARGET is the explicit process name or IRQ-thread
 # name the operator names on the command line (make rt.priority.apply TARGET=...).
-# RT_PRIO is the SCHED_FIFO priority applied. No default TARGET — an empty TARGET
+# RT_PRIO is the SCHED_FIFO priority applied. No default TARGET - an empty TARGET
 # is a fail-closed condition in rt.priority.apply.
 TARGET   ?=
 RT_PRIO  ?= 80
@@ -38,7 +38,7 @@ RT_PRIO  ?= 80
 rt.priority.show:
 	$(QUIET)PATH="$$PATH:/usr/sbin:/sbin"; t="$(TARGET)"; \
 	if [ -z "$$t" ]; then \
-		printf "rt.priority.show: no TARGET given — candidate IRQ threads:\n"; \
+		printf "rt.priority.show: no TARGET given - candidate IRQ threads:\n"; \
 		ps -eo pid,class,rtprio,comm 2>/dev/null | grep -i 'irq/\|ec_\|ethercat' || printf "rt.priority.show:   (none matched)\n"; \
 		printf "rt.priority.show: name one explicitly: make rt.priority.apply TARGET=<name> RT_PRIO=<n>\n"; \
 		exit 0; \
@@ -62,20 +62,20 @@ rt.priority.apply: doctor.rtdiag
 	$(QUIET)$(call require-root)
 	$(QUIET)PATH="$$PATH:/usr/sbin:/sbin"; t="$(TARGET)"; prio="$(RT_PRIO)"; \
 	if [ -z "$$t" ]; then \
-		printf "rt.priority.apply: FAIL — TARGET is empty; an explicit named process/IRQ thread is required (fail-closed)\n" >&2; exit 1; \
+		printf "rt.priority.apply: FAIL - TARGET is empty; an explicit named process/IRQ thread is required (fail-closed)\n" >&2; exit 1; \
 	fi; \
 	case "$$t" in \
-		*[*?[]*) printf "rt.priority.apply: FAIL — TARGET '%s' looks like a wildcard; name one target explicitly (fail-closed)\n" "$$t" >&2; exit 1;; \
+		*[*?[]*) printf "rt.priority.apply: FAIL - TARGET '%s' looks like a wildcard; name one target explicitly (fail-closed)\n" "$$t" >&2; exit 1;; \
 	esac; \
 	pids="$$(pgrep -f "$$t" 2>/dev/null || true)"; \
 	if [ -z "$$pids" ]; then \
-		printf "rt.priority.apply: FAIL — no process matches TARGET %s (fail-closed)\n" "$$t" >&2; exit 1; \
+		printf "rt.priority.apply: FAIL - no process matches TARGET %s (fail-closed)\n" "$$t" >&2; exit 1; \
 	fi; \
 	for pid in $$pids; do \
 		printf "rt.priority.apply: setting SCHED_FIFO prio %s on pid %s (%s)\n" "$$prio" "$$pid" "$$t"; \
 		$(SUDO) chrt -f -p "$$prio" "$$pid"; \
 	done; \
-	printf "rt.priority.apply: OK — applied prio %s to TARGET %s only\n" "$$prio" "$$t"
+	printf "rt.priority.apply: OK - applied prio %s to TARGET %s only\n" "$$prio" "$$t"
 
 # ---------------------------------------------------------------------------
 # Latency tool classification (archive-only, D3)
@@ -93,12 +93,12 @@ RT_LATENCY_MIN_RESULTS   ?= min avg max samples
 ## Classify latency tools (cyclictest = archive-only, D3) and record evidence metadata (read-only)
 rt.latency.classify:
 	$(QUIET)printf "rt.latency.classify: ===== latency tool classification (D3) =====\n"
-	$(QUIET)printf "rt.latency.classify: %-12s : %-8s — %s\n" "cyclictest" "archive" "example only; never an active input, never gates a target (D3)"
-	$(QUIET)printf "rt.latency.classify: %-12s : %-8s — %s\n" "hwlatdetect" "archive" "example only; never an active input, never gates a target (D3)"
-	$(QUIET)printf "rt.latency.classify: %-12s : %-8s — %s\n" "rt.status" "active" "the only RT readiness signal the repository consumes"
+	$(QUIET)printf "rt.latency.classify: %-12s : %-8s - %s\n" "cyclictest" "archive" "example only; never an active input, never gates a target (D3)"
+	$(QUIET)printf "rt.latency.classify: %-12s : %-8s - %s\n" "hwlatdetect" "archive" "example only; never an active input, never gates a target (D3)"
+	$(QUIET)printf "rt.latency.classify: %-12s : %-8s - %s\n" "rt.status" "active" "the only RT readiness signal the repository consumes"
 	$(QUIET)printf "rt.latency.classify: evidence path (metadata) = %s\n" "$(RT_LATENCY_EVIDENCE_PATH)"
 	$(QUIET)printf "rt.latency.classify: minimum result set (metadata) = %s\n" "$(RT_LATENCY_MIN_RESULTS)"
-	$(QUIET)printf "rt.latency.classify: NOTE — this is recorded metadata; the repository neither produces nor gates on latency evidence (D3)\n"
+	$(QUIET)printf "rt.latency.classify: NOTE - this is recorded metadata; the repository neither produces nor gates on latency evidence (D3)\n"
 
 # Read-only: prints the archived example invocations. NEVER runs them as a
 # repository step (D3). The examples come from the archive anchor created
@@ -116,7 +116,7 @@ rt.latency.examples:
 		printf "rt.latency.examples:   cyclictest --mlockall --smp --priority=80 --interval=200 --distance=0\n"; \
 		printf "rt.latency.examples:   hwlatdetect --duration=60 --threshold=10\n"; \
 	fi; \
-	printf "rt.latency.examples: NOTE — print only; these are NOT run as a repository step (D3)\n"
+	printf "rt.latency.examples: NOTE - print only; these are NOT run as a repository step (D3)\n"
 
 VARS_EXCLUDES+=TARGET
 

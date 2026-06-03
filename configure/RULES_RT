@@ -1,4 +1,4 @@
-# RULES_RT — Debian 13 real-time host configuration targets (M11).
+# RULES_RT - Debian 13 real-time host configuration targets (M11).
 #
 # Depends on M5 (doctor + guard macros). Root-affecting; doctor (or a scoped
 # doctor) precedes every host-mutating target.
@@ -37,11 +37,11 @@
 # first recipe line; the install runs through $(SUDO). NO boot-default mutation
 # (D2): the recipe never calls update-grub and never sets GRUB_DEFAULT.
 ## Install the RT kernel and headers; does NOT set the boot default (D2) (root-affecting)
-rt.kernel.provision: doctor.kernel
+rt.kernel.provision: doctor.package
 	$(QUIET)$(call require-root)
 	$(QUIET)printf "rt.kernel.provision: installing RT kernel + headers (no boot-default change, D2)\n"
 	$(SUDO) $(RT_PKG_MANAGER) $(RT_PKG_INSTALL) $(RT_KERNEL_PKG) $(RT_HEADERS_PKG)
-	$(QUIET)printf "rt.kernel.provision: OK — %s %s installed; boot default left to the operator (M16)\n" "$(RT_KERNEL_PKG)" "$(RT_HEADERS_PKG)"
+	$(QUIET)printf "rt.kernel.provision: OK - %s %s installed; boot default left to the operator (M16)\n" "$(RT_KERNEL_PKG)" "$(RT_HEADERS_PKG)"
 
 # Read-only: records/exposes the explicit RT kernel selection without forcing the
 # boot default (D2). It reports the installed RT-flavor kernels and the current
@@ -57,7 +57,7 @@ rt.kernel.select:
 	else \
 		printf "rt.kernel.select: installed RT     = none (run rt.kernel.provision)\n"; \
 	fi; \
-	printf "rt.kernel.select: NOTE — boot default is NOT changed here (D2); select at the boot menu, confirm post-reboot (M16)\n"
+	printf "rt.kernel.select: NOTE - boot default is NOT changed here (D2); select at the boot menu, confirm post-reboot (M16)\n"
 
 # ---------------------------------------------------------------------------
 # Realtime group and limits.d policy
@@ -68,9 +68,9 @@ rt.kernel.select:
 # guard-path; group creation runs through $(SUDO). Idempotent: an existing group
 # is left as-is, and the policy body is re-rendered to the same content.
 ## Create the realtime group and install the limits.d RT policy (root-affecting)
-rt.limits.install: doctor
+rt.limits.install: doctor.install
 	$(QUIET)$(call require-root)
-	$(QUIET)$(call guard-path,$(RT_LIMITS_FILE))
+	+$(QUIET)$(call guard-path,$(RT_LIMITS_FILE),$(RT_LIMITS_DIR))
 	$(QUIET)if getent group "$(RT_GROUP)" >/dev/null 2>&1; then \
 		printf "rt.limits.install: group %s already present\n" "$(RT_GROUP)"; \
 	else \
@@ -84,7 +84,7 @@ rt.limits.install: doctor
 	done; \
 	$(SUDO) install -m 0644 "$$tmp" "$(RT_LIMITS_FILE)"; \
 	rm -f "$$tmp"; \
-	printf "rt.limits.install: OK — wrote %s\n" "$(RT_LIMITS_FILE)"
+	printf "rt.limits.install: OK - wrote %s\n" "$(RT_LIMITS_FILE)"
 
 # Read-only: reports the realtime group membership and the limits.d policy state.
 ## Report realtime group and limits.d policy state (read-only)
@@ -112,12 +112,12 @@ rt.limits.audit:
 # created only if absent (so the first pristine config is preserved across repeat
 # applies), and a parameter already present is not appended again.
 ## Back up GRUB, append RT parameters idempotently, run update-grub (root-affecting)
-rt.grub.apply: doctor
+rt.grub.apply: doctor.grub
 	$(QUIET)$(call require-root)
-	$(QUIET)$(call guard-path,$(RT_GRUB_FILE))
-	$(QUIET)$(call guard-path,$(RT_GRUB_BACKUP))
+	+$(QUIET)$(call guard-path,$(RT_GRUB_FILE),$(RT_GRUB_FILE_GUARD),exact)
+	+$(QUIET)$(call guard-path,$(RT_GRUB_BACKUP),$(RT_GRUB_BACKUP_GUARD),exact)
 	$(QUIET)if [ ! -f "$(RT_GRUB_FILE)" ]; then \
-		printf "rt.grub.apply: FAIL — %s not found (fail-closed)\n" "$(RT_GRUB_FILE)" >&2; exit 1; \
+		printf "rt.grub.apply: FAIL - %s not found (fail-closed)\n" "$(RT_GRUB_FILE)" >&2; exit 1; \
 	fi
 	$(QUIET)if [ -f "$(RT_GRUB_BACKUP)" ]; then \
 		printf "rt.grub.apply: backup already exists, preserving %s\n" "$(RT_GRUB_BACKUP)"; \
@@ -135,7 +135,7 @@ rt.grub.apply: doctor
 		fi; \
 	done
 	$(SUDO) update-grub
-	$(QUIET)printf "rt.grub.apply: OK — applied RT parameters and ran update-grub (reboot persistence is an M16 gate)\n"
+	$(QUIET)printf "rt.grub.apply: OK - applied RT parameters and ran update-grub (reboot persistence is an M16 gate)\n"
 
 # Read-only: reports the GRUB parameter state and whether a backup exists.
 ## Report GRUB RT-parameter state and backup presence (read-only)
@@ -164,18 +164,18 @@ rt.grub.audit:
 # update-grub. The restore is a PATH PREFIX write/rm wrapped with guard-path;
 # update-grub is gated by doctor + require-root. Fail-closed when no backup exists.
 ## Restore the backed-up GRUB config and run update-grub (root-affecting)
-rt.grub.rollback: doctor
+rt.grub.rollback: doctor.grub
 	$(QUIET)$(call require-root)
-	$(QUIET)$(call guard-path,$(RT_GRUB_FILE))
-	$(QUIET)$(call guard-path,$(RT_GRUB_BACKUP))
+	+$(QUIET)$(call guard-path,$(RT_GRUB_FILE),$(RT_GRUB_FILE_GUARD),exact)
+	+$(QUIET)$(call guard-path,$(RT_GRUB_BACKUP),$(RT_GRUB_BACKUP_GUARD),exact)
 	$(QUIET)if [ ! -f "$(RT_GRUB_BACKUP)" ]; then \
-		printf "rt.grub.rollback: FAIL — no backup at %s (nothing to restore, fail-closed)\n" "$(RT_GRUB_BACKUP)" >&2; exit 1; \
+		printf "rt.grub.rollback: FAIL - no backup at %s (nothing to restore, fail-closed)\n" "$(RT_GRUB_BACKUP)" >&2; exit 1; \
 	fi
 	$(QUIET)printf "rt.grub.rollback: restoring %s <- %s\n" "$(RT_GRUB_FILE)" "$(RT_GRUB_BACKUP)"
 	$(SUDO) cp -p "$(RT_GRUB_BACKUP)" "$(RT_GRUB_FILE)"
 	$(SUDO) rm -f "$(RT_GRUB_BACKUP)"
 	$(SUDO) update-grub
-	$(QUIET)printf "rt.grub.rollback: OK — restored GRUB config and ran update-grub\n"
+	$(QUIET)printf "rt.grub.rollback: OK - restored GRUB config and ran update-grub\n"
 
 # ---------------------------------------------------------------------------
 # Clock source
@@ -200,9 +200,9 @@ rt.clock.status:
 	printf "rt.clock.status: current   = %s\n" "$$cur"; \
 	printf "rt.clock.status: available = %s\n" "$$avail"; \
 	if [ "$$cur" = "$$expected" ]; then \
-		printf "rt.clock.status: OK — current matches expected\n"; \
+		printf "rt.clock.status: OK - current matches expected\n"; \
 	else \
-		printf "rt.clock.status: MISMATCH — current (%s) != expected (%s)\n" "$$cur" "$$expected"; \
+		printf "rt.clock.status: MISMATCH - current (%s) != expected (%s)\n" "$$cur" "$$expected"; \
 	fi
 
 # ---------------------------------------------------------------------------
@@ -218,13 +218,13 @@ rt.service.apply: doctor.systemd
 	$(QUIET)action="$(RT_SERVICE_ACTION)"; \
 	allow="$(RT_SERVICE_ALLOWLIST)"; \
 	if [ -z "$$allow" ]; then \
-		printf "rt.service.apply: allowlist empty — nothing to apply (fail-closed against wildcards)\n"; exit 0; \
+		printf "rt.service.apply: allowlist empty - nothing to apply (fail-closed against wildcards)\n"; exit 0; \
 	fi; \
 	for svc in $$allow; do \
 		printf "rt.service.apply: %s -> %s (allowlisted)\n" "$$svc" "$$action"; \
 		$(SUDO) systemctl $$action "$$svc"; \
 	done; \
-	printf "rt.service.apply: OK — applied %s to allowlist only\n" "$$action"
+	printf "rt.service.apply: OK - applied %s to allowlist only\n" "$$action"
 
 # Read-only: reports the state of each allowlisted service. Never touches a
 # service outside the allowlist.
@@ -280,6 +280,6 @@ rt.status:
 	$(QUIET)$(MAKE) --no-print-directory rt.limits.audit
 	$(QUIET)$(MAKE) --no-print-directory rt.service.audit
 	$(QUIET)$(MAKE) --no-print-directory rt.tuned.status
-	$(QUIET)printf "rt.status: NOTE — running-kernel and boot-persistence confirmation is an external gate (M16, D2)\n"
+	$(QUIET)printf "rt.status: NOTE - running-kernel and boot-persistence confirmation is an external gate (M16, D2)\n"
 
 -include $(TOP)/configure/RULES_RT.local
