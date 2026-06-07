@@ -37,12 +37,12 @@ runtime readiness checks, and field deployment prerequisites for Debian 13.
 ## Canonical Work Register
 
 Next session entry point: begin R2-12 Debian 13 VM real-execution validation.
-Revision 1 M1 through M14 are code-complete and dry-run verified on branch
-`dev/milestone-buildout`. Revision 2 R2-1 through R2-11 are repository-local
-implemented and verified. Guard, doctor, DKMS, runtime-status, removal-flow,
-ASCII-output, documentation, and verification-harness gaps are closed before VM
-real-execution validation. No host state was intentionally mutated and no
-hardware test has run yet.
+Revision 1 M1 through M15 are code-complete and repository-local verified on
+branch `dev/milestone-buildout`. Revision 2 R2-1 through R2-11 are
+repository-local implemented and verified. Guard, doctor, DKMS, runtime-status,
+removal-flow, ASCII-output, documentation, and verification-harness gaps are
+closed before VM real-execution validation. No host state was intentionally
+mutated and no hardware test has run yet.
 
 This file is the repository source of truth for milestone status. Agent memory
 may keep clone hints for reference repositories, but milestone status and
@@ -55,7 +55,7 @@ milestone table, status, and external gates.
 
 | Revision | Scope | Status |
 | --- | --- | --- |
-| Revision 1 | Initial Debian 13 EtherCAT and RT target graph buildout, M1 through M16. | M1-M14 code-complete and dry-run verified; M15 partial; M16 blocked by external validation. |
+| Revision 1 | Initial Debian 13 EtherCAT and RT target graph buildout, M1 through M16. | M1-M15 code-complete and repository-local verified; M16 blocked by external validation. |
 | Revision 2 | Round 2 hardening after full-code review of Revision 1. | R2-1 through R2-11 implemented and repository-local verified; R2-12 and R2-13 remain external gates. |
 
 ## Current Baseline
@@ -212,7 +212,7 @@ Real-time host acceptance criteria:
 | Diagnostics | M12 RT priority and latency diagnostics | Milestone | Implemented (repo-local; dry-run verified; M16 hardware gate pending) | M11 | `RULES_RTDIAG` adds the controlled priority helper, active/optional/archive tool classification, and evidence capture. |
 | Rollback | M13 Removal and rollback | Milestone | Implemented (repo-local; dry-run verified; M16 hardware gate pending) | M5, M8, M10, M11 | `RULES_REMOVE` provides stop, disable, uninstall, purge, guard, and audit paths for EtherCAT and RT host policy state. |
 | Verification | M14 Repository-local verification harness | Milestone | Implemented (repo-local; dry-run verified; M16 hardware gate pending) | M4, M5 | `verify.all` runs reproducibility, dry-run, idempotence, and residue checks as a non-hardware regression gate. |
-| Documentation | M15 Documentation set | Milestone | Partial (dev-plan + parity-matrix exist; full doc set pending) | M4 through M14 | `docs/dev-plan-buildout.md` and `docs/parity-matrix.md` exist; architecture, operation, install, removal, RT tuning, and field readiness documents are still pending. |
+| Documentation | M15 Documentation set | Milestone | Implemented (repository-local; VM and hardware gates pending) | M4 through M14 | `docs/architecture.md`, `docs/operation.md`, `docs/install.md`, `docs/removal.md`, `docs/rt-tuning.md`, and `docs/field-readiness.md` complete the system documentation set. |
 | Field validation | M16 Hardware, reboot, and production validation | External gate | Blocked | M6, M8, M11, M14 | Requires real adapter, slave chain, reboot persistence, kernel update behavior, unload/reload, and RT readiness evidence on hardware. |
 
 ## Revision 2 Milestones
@@ -303,7 +303,7 @@ document unless it is needed to prove host readiness on real hardware.
 
 ## Next Session Entry Point
 
-Revision 1 M1 through M14 and Revision 2 R2-1 through R2-11 are code-complete
+Revision 1 M1 through M15 and Revision 2 R2-1 through R2-11 are code-complete
 and repository-local verified on branch `dev/milestone-buildout`. The target
 graph was checked with dry-run and read-only targets only; no host state was
 intentionally mutated and no hardware test has run yet, so none of these
@@ -316,5 +316,6 @@ module, systemd, udev, GRUB, service policy, and removal targets for real, in
 dependency order behind the doctor and destructive-target guards. After real
 execution holds on a VM, move to R2-13 / M16 hardware gates (real adapter, slave
 chain, reboot persistence, kernel update behavior, unload/reload, and RT
-readiness on target hardware). M15 documentation can be completed in parallel
-once the executed behavior is observed.
+readiness on target hardware). Documentation is complete for repository-local
+behavior and can be revised after VM or hardware evidence changes the operating
+contract.
