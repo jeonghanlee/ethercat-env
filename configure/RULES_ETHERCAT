@@ -132,15 +132,23 @@ build.dkms:
 	$(DKMS) build -m $(MODULE_NAME) -v $(MODULE_VERSION)
 #	$(DKMS) build -m $(MODULE_NAME) -v $(MODULE_VERSION) --verbose
 
-# Root-affecting: registers the source tree under /var/lib/dkms.
+# Root-affecting: stages the generated source tree into /usr/src and registers
+# it with DKMS. The "dkms add -m -v" form requires the source at
+# $(DKMS_USR_SRC), so the source tree (carrying dkms.conf) is copied there first.
 add.dkms: doctor.tools
 	$(QUIET)$(call require-root)
+	$(QUIET)test -f "$(DKMS_CONF)" || { printf "add.dkms: FAIL - %s not found (run make dkms.conf)\n" "$(DKMS_CONF)" >&2; exit 1; }
+	$(QUIET)case "$(DKMS_USR_SRC)" in /usr/src/$(MODULE_NAME)-*) ;; *) printf "add.dkms: FAIL - unsafe DKMS_USR_SRC=%s\n" "$(DKMS_USR_SRC)" >&2; exit 1 ;; esac
+	$(SUDO) rm -rf "$(DKMS_USR_SRC)"
+	$(SUDO) cp -r "$(abspath $(DKMS_SRC_TREE))" "$(DKMS_USR_SRC)"
 	$(SUDO) $(DKMS) add -m $(MODULE_NAME) -v $(MODULE_VERSION)
 
-# Root-affecting: removes the registration from /var/lib/dkms.
+# Root-affecting: removes the registration from /var/lib/dkms and the staged
+# source tree from /usr/src.
 remove.dkms: doctor.tools
 	$(QUIET)$(call require-root)
 	$(SUDO) $(DKMS) remove -m $(MODULE_NAME) -v $(MODULE_VERSION) --all
+	$(QUIET)case "$(DKMS_USR_SRC)" in /usr/src/$(MODULE_NAME)-*) $(SUDO) rm -rf "$(DKMS_USR_SRC)" ;; esac
 
 # Root-affecting: installs the built module into /lib/modules and runs depmod -a.
 install.dkms: doctor.kernel
