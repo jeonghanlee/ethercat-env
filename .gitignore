@@ -10,3 +10,6 @@ conf.py
 .DS_Store
 ethercat-src
 review_sessions/
+build/
+.versions
+work/

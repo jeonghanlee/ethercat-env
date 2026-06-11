@@ -48,17 +48,6 @@ else
 ETHERCAT_OPTIONS+=--disable-r8169
 endif
 
-## Tested
-## Native CCAT needs the convert-ccat-to-mfd.patch
-## So, the option should be used as -ccat_netdev instead of -ccat
-## Thursday, November 28 23:42:05 CET 2019, jhlee
-##
-ifeq ($(WITH_DEV_CCAT),YES)
-ETHERCAT_OPTIONS+=--enable-ccat_netdev
-else
-ETHERCAT_OPTIONS+=--disable-ccat
-endif
-
 ## Other Options
 ##
 ifeq ($(ENABLE_STATIC),YES)
@@ -133,6 +122,11 @@ else
 ETHERCAT_OPTIONS+=--enable-rt-syslog=no
 endif
 
+# Explicit tracked default for the RTMUTEX patch branch (M7). Previously never
+# assigned, which left this branch dead. Default NO = generic build, no patchset.
+# Opt in via CONFIG_SITE.local (WITH_PATCHSET:=YES) together with ENABLE_RTMUTEX.
+WITH_PATCHSET ?= NO
+
 ifeq ($(WITH_PATCHSET),YES)
 ifeq ($(ENABLE_RTMUTEX),YES)
 ETHERCAT_OPTIONS+=--enable-rtmutex=yes
@@ -140,5 +134,4 @@ else
 ETHERCAT_OPTIONS+=--enable-rtmutex=no
 endif
 endif
-
 

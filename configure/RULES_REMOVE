@@ -1,0 +1,182 @@
+# RULES_REMOVE - consolidated removal and rollback graph (M13).
+#
+# Depends on M5 (guard macros), M8 (module lifecycle), M10 (systemd/udev/command/
+# loader), M11 (RT host config). Destructive; guards precede every step.
+#
+# Removal is modeled as a sequence, never a single blunt rm -rf:
+#   remove.stop  -> remove.disable -> remove.uninstall -> (optional) remove.purge
+#   -> remove.audit
+# remove.rt reverts the M11 RT host mutations. remove.dryrun previews the whole
+# sequence without executing it.
+#
+# SAFETY CONTRACT for every root-affecting target in this file:
+#   (1) doctor (or a scoped doctor) is a NORMAL prerequisite that exits non-zero
+#       on a missing required tool (fail-closed);
+#   (2) require-root runs as the FIRST recipe line;
+#   (3) every host mutation is routed through $(SUDO);
+#   (4) every rm / path-prefix write is wrapped with guard-path; systemctl /
+#       udevadm / ldconfig / update-grub mutations are gated by doctor +
+#       require-root only (no guard-path, per the M14 verification policy).
+#
+# remove.audit and remove.dryrun are read-only / preview and carry no
+# require-root / $(SUDO).
+
+.PHONY: remove.stop remove.disable remove.uninstall remove.rt \
+        remove.purge remove.audit remove.dryrun
+
+# ---------------------------------------------------------------------------
+# stop / disable - delegate to the real M10 sd_* and M8 module targets.
+# ---------------------------------------------------------------------------
+
+# Root-affecting: stops the service (M10 sd_stop). sd_stop already carries
+# doctor.systemd + require-root + $(SUDO); this is the named removal entry point.
+## Stop the EtherCAT service (delegates to M10 sd_stop) (root-affecting)
+remove.stop: sd_stop
+	$(QUIET)printf "remove.stop: OK - service stop step complete\n"
+
+# Root-affecting: disables the service from boot (M10 sd_disable).
+## Disable the EtherCAT service from boot (delegates to M10 sd_disable) (root-affecting)
+remove.disable: sd_disable
+	$(QUIET)printf "remove.disable: OK - service disable step complete\n"
+
+# ---------------------------------------------------------------------------
+# uninstall - remove installed files, units, udev rules, command path, loader
+# entries. Each step delegates to a target that already carries its own guards,
+# or wraps its own rm with guard-path. doctor.systemd is the gate for the
+# systemd/udev/loader sub-steps.
+# ---------------------------------------------------------------------------
+
+# Root-affecting: the consolidated file-level uninstall. It runs the M10 cleanup
+# targets (each guarded) and then removes the prefix tree via the M2/M4-guarded
+# src_uninstall. require-root is asserted here too as the named entry point even
+# though every delegated step re-asserts it.
+## Remove installed files, unit, udev rule, command path, loader entries (root-affecting)
+remove.uninstall: doctor.systemd doctor.install sd_clean udev.remove src_uninstall
+	$(QUIET)$(call require-root)
+	+$(QUIET)$(call guard-path,$(COMMAND_LINK),$(COMMAND_LINK_GUARD),exact)
+	$(SUDO) rm -f "$(COMMAND_LINK)"
+	+$(QUIET)$(call guard-path,$(LOADER_DEST_CONF),$(LOADER_CONF_DIR))
+	$(SUDO) rm -f "$(LOADER_DEST_CONF)"
+	$(SUDO) ldconfig
+	$(QUIET)printf "remove.uninstall: OK - files, unit, udev rule, command path, loader entries removed\n"
+
+# ---------------------------------------------------------------------------
+# remove.rt - revert the M11 RT host mutations.
+#   - GRUB: rt.grub.rollback restores the backed-up config (M11; guarded).
+#   - limits.d: remove the installed RT policy file (guard-path on the path).
+#   - service allowlist: undo the rt.service action by unmasking the allowlisted
+#     services (the inverse of the masked default).
+# ---------------------------------------------------------------------------
+
+# Root-affecting: reverts the RT host mutations. rt.grub.rollback already carries
+# doctor + require-root + guard-path + $(SUDO). The limits.d rm is wrapped with
+# guard-path here. The service un-allowlist runs through $(SUDO) systemctl
+# (doctor.systemd gate). Operates ONLY on the explicit RT_SERVICE_ALLOWLIST.
+## Revert M11 RT mutations: GRUB rollback, remove limits.d, undo service allowlist (root-affecting)
+remove.rt: doctor.systemd doctor.install
+	$(QUIET)$(call require-root)
+	+$(QUIET)$(call guard-path,$(RT_GRUB_FILE),$(RT_GRUB_FILE_GUARD),exact)
+	+$(QUIET)$(call guard-path,$(RT_GRUB_BACKUP),$(RT_GRUB_BACKUP_GUARD),exact)
+	+$(QUIET)$(call guard-path,$(RT_LIMITS_FILE),$(RT_LIMITS_DIR))
+	$(QUIET)grub_rc=0; \
+	if [ -f "$(RT_GRUB_BACKUP)" ]; then \
+		update_cmd="$${DOCTOR_TOOL_update_grub:-update-grub}"; \
+		if command -v "$$update_cmd" >/dev/null 2>&1; then \
+			printf "remove.rt: restoring GRUB %s <- %s\n" "$(RT_GRUB_FILE)" "$(RT_GRUB_BACKUP)"; \
+			$(SUDO) cp -p "$(RT_GRUB_BACKUP)" "$(RT_GRUB_FILE)" && \
+			$(SUDO) rm -f "$(RT_GRUB_BACKUP)" && \
+			$(SUDO) "$$update_cmd" || grub_rc=$$?; \
+		else \
+			printf "remove.rt: GRUB rollback skipped - missing update-grub (%s)\n" "$$update_cmd" >&2; \
+			grub_rc=1; \
+		fi; \
+	else \
+		printf "remove.rt: GRUB backup absent, rollback skipped\n"; \
+	fi; \
+	if [ "$$grub_rc" -ne 0 ]; then \
+		printf "remove.rt: GRUB rollback incomplete, continuing remaining cleanup\n" >&2; \
+	fi; \
+	$(SUDO) rm -f "$(RT_LIMITS_FILE)"; \
+	printf "remove.rt: removed limits.d policy %s\n" "$(RT_LIMITS_FILE)"; \
+	allow="$(RT_SERVICE_ALLOWLIST)"; \
+	if [ -z "$$allow" ]; then \
+		printf "remove.rt: service allowlist empty - nothing to undo\n"; \
+	else \
+		for svc in $$allow; do \
+			printf "remove.rt: unmasking allowlisted service %s\n" "$$svc"; \
+			$(SUDO) systemctl unmask "$$svc"; \
+		done; \
+	fi; \
+	if [ "$$grub_rc" -ne 0 ]; then exit "$$grub_rc"; fi; \
+	printf "remove.rt: OK - RT limits.d removed, service allowlist reverted, GRUB rollback handled separately\n"
+
+# ---------------------------------------------------------------------------
+# purge - remove configuration and state in addition to files. Distinct from
+# uninstall: it also drops the realtime group, the EtherCAT device access group
+# (created by udev.install), the GRUB backup (if still present), and the
+# repo-local generated artifacts.
+# ---------------------------------------------------------------------------
+
+# Root-affecting: uninstall + RT revert, then drop residual config/state. Each rm
+# is wrapped with guard-path; group deletion runs through $(SUDO).
+## Remove configuration and state in addition to files (root-affecting)
+remove.purge: doctor.install remove.uninstall remove.rt
+	$(QUIET)$(call require-root)
+	$(QUIET)if getent group "$(RT_GROUP)" >/dev/null 2>&1; then \
+		printf "remove.purge: deleting realtime group %s\n" "$(RT_GROUP)"; \
+		$(SUDO) groupdel "$(RT_GROUP)"; \
+	else \
+		printf "remove.purge: realtime group %s already absent\n" "$(RT_GROUP)"; \
+	fi
+	$(QUIET)if getent group "$(ECAT_DEV_GROUP)" >/dev/null 2>&1; then \
+		printf "remove.purge: deleting device access group %s\n" "$(ECAT_DEV_GROUP)"; \
+		$(SUDO) groupdel "$(ECAT_DEV_GROUP)"; \
+	else \
+		printf "remove.purge: device access group %s already absent\n" "$(ECAT_DEV_GROUP)"; \
+	fi
+	+$(QUIET)$(call guard-path,$(RT_GRUB_BACKUP),$(RT_GRUB_BACKUP_GUARD),exact)
+	$(SUDO) rm -f "$(RT_GRUB_BACKUP)"
+	$(QUIET)printf "remove.purge: OK - config and state purged\n"
+
+# ---------------------------------------------------------------------------
+# audit - read-only residue report for both EtherCAT and RT host state.
+# ---------------------------------------------------------------------------
+
+# Read-only: reports any residual files/units/rules/config after removal, for
+# BOTH EtherCAT and RT state. Prints the literal token "residue" on any leftover
+# so the M14 verify.residue gate can detect it; prints "no residue" when clean.
+## Report residual EtherCAT and RT host state after removal (read-only)
+remove.audit:
+	$(QUIET)PATH="$$PATH:/usr/sbin:/sbin"; rc=0; \
+	printf "remove.audit: ===== EtherCAT + RT residue report (read-only) =====\n"; \
+	if [ -e "$(INSTALL_LOCATION)" ]; then printf "remove.audit: residue - prefix tree %s\n" "$(INSTALL_LOCATION)"; rc=1; else printf "remove.audit: clean   - prefix tree absent\n"; fi; \
+	if [ -e "$(SYSTEMD_DEST_UNIT)" ]; then printf "remove.audit: residue - systemd unit %s\n" "$(SYSTEMD_DEST_UNIT)"; rc=1; else printf "remove.audit: clean   - systemd unit absent\n"; fi; \
+	if [ -e "$(ECAT_UDEV_DEST_RULE)" ]; then printf "remove.audit: residue - udev rule %s\n" "$(ECAT_UDEV_DEST_RULE)"; rc=1; else printf "remove.audit: clean   - udev rule absent\n"; fi; \
+	if [ -e "$(COMMAND_LINK)" ]; then printf "remove.audit: residue - command path %s\n" "$(COMMAND_LINK)"; rc=1; else printf "remove.audit: clean   - command path absent\n"; fi; \
+	if [ -e "$(LOADER_DEST_CONF)" ]; then printf "remove.audit: residue - loader fragment %s\n" "$(LOADER_DEST_CONF)"; rc=1; else printf "remove.audit: clean   - loader fragment absent\n"; fi; \
+	if [ -e "$(RT_LIMITS_FILE)" ]; then printf "remove.audit: residue - RT limits.d %s\n" "$(RT_LIMITS_FILE)"; rc=1; else printf "remove.audit: clean   - RT limits.d absent\n"; fi; \
+	if getent group "$(RT_GROUP)" >/dev/null 2>&1; then printf "remove.audit: residue - realtime group %s\n" "$(RT_GROUP)"; rc=1; else printf "remove.audit: clean   - realtime group absent\n"; fi; \
+	if getent group "$(ECAT_DEV_GROUP)" >/dev/null 2>&1; then printf "remove.audit: residue - device access group %s\n" "$(ECAT_DEV_GROUP)"; rc=1; else printf "remove.audit: clean   - device access group absent\n"; fi; \
+	if [ -e "$(RT_GRUB_BACKUP)" ]; then printf "remove.audit: residue - RT GRUB backup %s\n" "$(RT_GRUB_BACKUP)"; rc=1; else printf "remove.audit: clean   - RT GRUB backup absent\n"; fi; \
+	if grep -q -- "$(RT_GRUB_PARAMS)" "$(RT_GRUB_FILE)" 2>/dev/null; then printf "remove.audit: residue - RT GRUB params still in %s\n" "$(RT_GRUB_FILE)"; rc=1; else printf "remove.audit: clean   - RT GRUB params absent\n"; fi; \
+	if command -v dpkg >/dev/null 2>&1 && dpkg -l "$(RT_KERNEL_PKG)" 2>/dev/null | grep -q '^ii'; then printf "remove.audit: note    - RT kernel package %s still installed (operator-managed package state, not counted as residue)\n" "$(RT_KERNEL_PKG)"; else printf "remove.audit: clean   - RT kernel package absent\n"; fi; \
+	if command -v systemctl >/dev/null 2>&1; then \
+		for svc in $(RT_SERVICE_ALLOWLIST); do \
+			if [ "$$(systemctl is-enabled "$$svc" 2>/dev/null)" = "masked" ]; then printf "remove.audit: residue - service %s still masked\n" "$$svc"; rc=1; else printf "remove.audit: clean   - service %s not masked\n" "$$svc"; fi; \
+		done; \
+	fi; \
+	if [ "$$rc" -ne 0 ]; then printf "remove.audit: residue present (see above)\n"; printf "remove.audit: VERDICT=residue\n"; else printf "remove.audit: OK - no residue\n"; printf "remove.audit: VERDICT=clean\n"; fi
+
+# Read-only preview: shows the full removal sequence without executing it. Uses
+# make --dry-run on each step so the guarded recipes print but nothing runs.
+## Preview the full removal sequence without executing (read-only)
+remove.dryrun:
+	$(QUIET)printf "remove.dryrun: ===== removal sequence preview (nothing executed) =====\n"
+	$(QUIET)$(MAKE) --no-print-directory --dry-run remove.stop
+	$(QUIET)$(MAKE) --no-print-directory --dry-run remove.disable
+	$(QUIET)$(MAKE) --no-print-directory --dry-run remove.uninstall
+	$(QUIET)$(MAKE) --no-print-directory --dry-run remove.rt
+	$(QUIET)$(MAKE) --no-print-directory --dry-run remove.purge
+	$(QUIET)printf "remove.dryrun: OK - preview complete; run remove.audit to inspect residue\n"
+
+-include $(TOP)/configure/RULES_REMOVE.local

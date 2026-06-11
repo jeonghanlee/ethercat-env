@@ -1,0 +1,18 @@
+# Archived RT latency-tool example invocations (M12, delegated decision D3).
+#
+# ARCHIVE-ONLY. These commands are reference examples for an operator running a
+# latency characterization by hand on target hardware. They are NEVER run as a
+# repository step, are NEVER an active runtime input, and NEVER gate any make
+# target (D3). `make rt.latency.examples` prints this file; it does not execute it.
+#
+# Evidence deposit (declared metadata only): an operator would place a latency
+# run's output under examples/rt-latency/ with at least the minimum result set
+# min / avg / max / samples. The repository neither produces nor verifies this.
+
+# cyclictest - primary scheduling-latency probe. Run on an RT kernel, after the
+# RT limits and isolated CPUs are in place, with the EtherCAT master idle.
+cyclictest --mlockall --smp --priority=80 --interval=200 --distance=0
+
+# hwlatdetect - hardware/SMI-induced latency probe. Detects firmware stalls the
+# scheduler cannot see.
+hwlatdetect --duration=60 --threshold=10

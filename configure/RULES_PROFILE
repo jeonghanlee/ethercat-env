@@ -1,0 +1,114 @@
+# RULES_PROFILE - device-profile support matrix and the native-profile
+# evidence gate.
+#
+# profile.matrix is read-only: it reports, per device flag, whether the flag
+# is enabled and whether the running kernel plus the upstream source tree
+# provide a matching driver (evidence-based availability).
+#
+# profile.check is the fail-closed gate wired as a prerequisite of autoconf
+# (RULES_ETHERCAT): an enabled native profile with no matching kernel +
+# upstream-source evidence aborts BEFORE ./configure runs, never a warning.
+#
+# Evidence model
+# --------------
+# - Enabled            : WITH_DEV_<flag> resolves to YES.
+# - Kernel evidence    : the kernel build directory for the running kernel
+#                        exists ($(PROFILE_KERNEL_BUILD)); i.e. headers are in
+#                        place to compile a native driver against this kernel.
+# - Upstream evidence  : the upstream devices/ tree carries a driver source
+#                        matched to the running kernel major.minor. The
+#                        "generic" driver is always present (devices/generic.c)
+#                        and is not kernel-version-gated; native drivers need
+#                        devices/<name>-<KMAJMIN>-ethercat.c, or any file under
+#                        a devices/<name>/ subdirectory matched to <KMAJMIN>.
+#
+# Non-root: inspects the running kernel string and the $(SRC_PATH) driver file
+# set only. No host mutation.
+
+.PHONY: profile.matrix profile.check
+
+# Running kernel and its major.minor (for example 6.12.88+deb13-amd64 -> 6.12).
+PROFILE_KERNEL_REL  := $(shell uname -r)
+PROFILE_KERNEL_MAJMIN := $(shell uname -r | grep -oE '^[0-9]+\.[0-9]+')
+PROFILE_KERNEL_BUILD := /lib/modules/$(PROFILE_KERNEL_REL)/build
+PROFILE_DEVICES_DIR := $(SRC_PATH)/devices
+
+# Device flags inspected by the matrix and the gate. Each entry pairs the
+# WITH_DEV_<flag> selector value with the upstream device-source basename used
+# to look for evidence under devices/.
+#   token := <flagname>:<enabled-value>:<device-basename>
+PROFILE_DEVICES := \
+	generic:$(WITH_DEV_GENERIC):generic \
+	8139too:$(WITH_DEV_8139TOO):8139too \
+	e100:$(WITH_DEV_E100):e100 \
+	e1000:$(WITH_DEV_E1000):e1000 \
+	e1000e:$(WITH_DEV_E1000E):e1000e \
+	igb:$(WITH_DEV_IGB):igb \
+	r8169:$(WITH_DEV_R8169):r8169
+
+# profile_evidence NAME BASENAME
+# Echo "generic", "present", or "absent" for the upstream-source driver
+# evidence of device BASENAME at the running kernel major.minor. "generic" is
+# the always-present non-versioned driver; native drivers must match the
+# running kernel major.minor either as a top-level
+# devices/<base>-<majmin>-ethercat.c file or as any file under a
+# devices/<base>/ subdirectory carrying that major.minor.
+define profile_evidence
+	base="$(2)"; dir="$(PROFILE_DEVICES_DIR)"; majmin="$(PROFILE_KERNEL_MAJMIN)"; \
+	if [ "$$base" = "generic" ]; then \
+		if [ -f "$$dir/generic.c" ]; then echo generic; else echo absent; fi; \
+	elif [ -f "$$dir/$$base-$$majmin-ethercat.c" ]; then \
+		echo present; \
+	elif [ -d "$$dir/$$base" ] && ls "$$dir/$$base"/*$$majmin*ethercat.c >/dev/null 2>&1; then \
+		echo present; \
+	else \
+		echo absent; \
+	fi
+endef
+
+## Report each device flag, enabled state, and kernel + source driver evidence
+profile.matrix:
+	$(QUIET)kbuild="$(PROFILE_KERNEL_BUILD)"; \
+	if [ -d "$$kbuild" ]; then kern=present; else kern=absent; fi; \
+	printf "profile.matrix: kernel %s (majmin %s), build dir %s\n" \
+		"$(PROFILE_KERNEL_REL)" "$(PROFILE_KERNEL_MAJMIN)" "$$kern"; \
+	printf "%-10s %-8s %-8s %-8s\n" "FLAG" "ENABLED" "KERNEL" "SOURCE"; \
+	printf -- "---------- -------- -------- --------\n"; \
+	for entry in $(PROFILE_DEVICES); do \
+		name="$${entry%%:*}"; rest="$${entry#*:}"; \
+		enabled="$${rest%%:*}"; base="$${rest##*:}"; \
+		[ "$$enabled" = "YES" ] && en=yes || en=no; \
+		src=$$($(call profile_evidence,$$name,$$base)); \
+		printf "%-10s %-8s %-8s %-8s\n" "$$name" "$$en" "$$kern" "$$src"; \
+	done
+
+## Fail closed before autoconf if a native profile lacks kernel + source evidence
+profile.check:
+	$(QUIET)kbuild="$(PROFILE_KERNEL_BUILD)"; \
+	if [ -d "$$kbuild" ]; then kern=present; else kern=absent; fi; \
+	failed=""; \
+	for entry in $(PROFILE_DEVICES); do \
+		name="$${entry%%:*}"; rest="$${entry#*:}"; \
+		enabled="$${rest%%:*}"; base="$${rest##*:}"; \
+		[ "$$enabled" = "YES" ] || continue; \
+		src=$$($(call profile_evidence,$$name,$$base)); \
+		if [ "$$name" = "generic" ]; then \
+			[ "$$src" = "generic" ] || failed="$$failed generic(no-source)"; \
+			continue; \
+		fi; \
+		if [ "$$kern" != "present" ]; then \
+			failed="$$failed $$name(no-kernel)"; \
+		fi; \
+		if [ "$$src" != "present" ]; then \
+			failed="$$failed $$name(no-source)"; \
+		fi; \
+	done; \
+	if [ -n "$$failed" ]; then \
+		printf "profile.check: FAIL - enabled profile(s) without evidence:%s (fail-closed)\n" "$$failed" >&2; \
+		exit 1; \
+	fi; \
+	printf "profile.check: OK - every enabled profile has kernel + source evidence\n"
+
+VARS_EXCLUDES+=profile_evidence
+
+-include $(TOP)/configure/RULES_PROFILE.local

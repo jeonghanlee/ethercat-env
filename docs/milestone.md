@@ -36,16 +36,28 @@ runtime readiness checks, and field deployment prerequisites for Debian 13.
 
 ## Canonical Work Register
 
-Next session entry point: finish M1 acceptance criteria in `docs/milestone.md`,
-then start M2 source reproducibility and M4 non-root target graph cleanup in
-`configure/RULES`, `configure/RULES_SRC`, and `configure/RULES_ETHERCAT`.
-Do not start root-affecting install, module install, systemd, udev, GRUB,
-service policy, or removal targets until M5 doctor and destructive-target
-guards exist.
+Next session entry point: merge `dev/milestone-buildout` to master, then start
+the successor environment buildout. Revision 1 M1 through M15 and Revision 2
+R2-1 through R2-12 are closed. R2-12 was validated by real execution on a
+Debian 13 VM (validation repository `ethercat-env-validation`); five defects
+were found by live execution and fixed (see R2-12 Findings). R2-13 and M16
+remain external hardware gates pending a real adapter and slave chain. No
+state was mutated on this development host; all root-affecting execution ran
+inside the disposable VM.
 
 This file is the repository source of truth for milestone status. Agent memory
 may keep clone hints for reference repositories, but milestone status and
 carry-forward work must be updated here.
+
+## Revision Model
+
+This file tracks development in revisions. Each revision keeps its own
+milestone table, status, and external gates.
+
+| Revision | Scope | Status |
+| --- | --- | --- |
+| Revision 1 | Initial Debian 13 EtherCAT and RT target graph buildout, M1 through M16. | M1-M15 code-complete and repository-local verified; M16 blocked by external validation. |
+| Revision 2 | Round 2 hardening after full-code review of Revision 1. | R2-1 through R2-12 closed; R2-12 VM real-execution validated with five live-execution defects fixed; R2-13 remains an external hardware gate. |
 
 ## Current Baseline
 
@@ -54,9 +66,10 @@ carry-forward work must be updated here.
 | Upstream source | `https://gitlab.com/etherlab.org/ethercat` |
 | Source reference | `stable-1.6` |
 | Observed upstream revision | `1.6.9-4-g46cc20e6` |
-| Source reproducibility | Not closed; `stable-1.6` is a moving branch and needs a pinned revision or verify-on-checkout policy |
+| Source reproducibility | Closed; `configure/RELEASE` pins `SRC_HASH` and `src.verify` fails closed on mismatch (VM-verified under real execution) |
 | Host baseline | Debian 13.5, kernel `6.12.88+deb13-amd64` |
 | Verified wrapper targets | `make init`, `make autoconf`, `make build`, `make build.modules` |
+| Dry-run-verified target surface | Full M1-M14 target graph (`doctor`, `profile.*`, `patch.*`, `src.verify`, `runtime.*`, `systemd.*`, `udev.*`, `rt.*`, `rtdiag.*`, `remove.*`, `verify.*`) resolves under `make --dry-run`; read-only targets run; no host mutation, no hardware test |
 | Verified modules | `ec_master.ko`, `ec_generic.ko`, `ec_r8169.ko`, `ec_mini.ko` |
 | Default profile under review | `generic` first, native NIC profiles enabled explicitly |
 | Target operating system | Debian 13 only |
@@ -107,7 +120,7 @@ findings are absorbed into this register below:
 | Source checkout from fixed upstream revision | Git source checkout from official upstream reference |
 | Autoconf and build orchestration | Debian 13 aware source preparation, configure, userspace build, and module build |
 | Device option variables | Evidence-based profile model for generic and native NIC drivers |
-| Patch, patchset, CentOS, and CCAT flows | Declared patch registry with site, compatibility, hardware, and archive classes |
+| Patch, patchset, and legacy OS flows | Declared patch registry with site, compatibility, hardware, and archive classes |
 | DKMS configuration generation | Kernel module lifecycle strategy with generated module metadata when DKMS is selected |
 | Module build and install | Reproducible `ec_master` and device module build, install, uninstall, and depmod flow |
 | `ethercat.conf` generation | Runtime configuration generator for master devices, backups, device modules, and up/down interfaces |
@@ -182,26 +195,73 @@ Real-time host acceptance criteria:
 | M14 repository-local verification may begin after M5 and should act as a regression gate for M8 through M13. | M8 through M13 |
 | M14 repository-local verification must exist before field validation is considered the only test path. | M15, M16 |
 
-## Milestones
+## Revision 1 Milestones
 
 | Topic | Work unit | Type | Status | Depends on | Evidence or next action |
 | --- | --- | --- | --- | --- | --- |
-| Planning | M1 Functional parity inventory | Milestone | In progress | None | Acceptance criteria are now summarized here; finish by checking each row against both reference repositories. |
-| Source | M2 Upstream source baseline | Milestone | In progress | M1 | `configure/RELEASE` points to official upstream `stable-1.6`; add pinned revision or verify-on-checkout policy. |
-| Build | M3 Debian 13 build baseline | Milestone | In progress | M2 | Build passed on current checkout; repeat after M2 source reproducibility closes. |
-| Makefile | M4 Makefile target architecture | Milestone | Not started | M1, M2 | Start with non-root structural split only; do not mutate host state. |
-| Doctor | M5 Host and tool doctor | Milestone | Not started | M4 | Add tool paths, kernel headers, module tools, systemd, udev, GRUB, root-only action checks, and destructive-target guards. |
-| Profile | M6 Profile and support matrix | Milestone | Not started | M5 | Make tracked default `generic` only; native profiles require kernel and upstream source evidence. |
-| Patch | M7 Patch architecture | Milestone | Not started | M4 | Add declared patch registry with dry-run, apply, reverse, status, and archive behavior. |
-| Kernel modules | M8 Kernel module lifecycle | Milestone | Not started | M5, M6 | Record module lifecycle strategy before root module install targets; include depmod and kernel update behavior. |
-| Runtime config | M9 Runtime configuration generator | Milestone | Not started | M6 | Generate and validate `ethercat.conf` from site and profile inputs. |
-| System integration | M10 systemd, udev, command path, and loader integration | Milestone | Not started | M5, M8, M9 | Install, enable, start, stop, disable, remove, and audit service, udev, command, and loader state. |
-| Real-time host | M11 Debian 13 real-time host configuration | Milestone | Not started | M5 | Reimplement `realtime-config` outcomes for RT packages, kernel selection, limits, boot parameters, clock source, tuned, and service policy. |
-| Diagnostics | M12 RT priority and latency diagnostics | Milestone | Not started | M11 | Add controlled priority helper, active/optional/archive tool classification, and readiness evidence capture. |
-| Rollback | M13 Removal and rollback | Milestone | Not started | M5, M8, M10, M11 | Stop, disable, uninstall, purge, guard, and audit EtherCAT and RT host policy state. |
-| Verification | M14 Repository-local verification harness | Milestone | Not started | M4, M5 | Begin after M5 as a regression gate for M8 through M13; add non-hardware checks for reproducibility, dry-run output, idempotence, and residue audit. |
-| Documentation | M15 Documentation set | Milestone | Not started | M4 through M14 | Add architecture, status, profile, operation, install, removal, RT tuning, and field readiness documents. |
+| Planning | M1 Functional parity inventory | Milestone | Implemented | None | Acceptance criteria and parity matrix are authored here and in `docs/parity-matrix.md`. |
+| Source | M2 Upstream source baseline | Milestone | Implemented (repo-local, dry-run verified) | M1 | `configure/RELEASE` pins official upstream `stable-1.6` with `src.verify` / `src.revision` verify-on-checkout policy. |
+| Build | M3 Debian 13 build baseline | Milestone | Implemented (repo-local, dry-run verified) | M2 | `build.baseline` chains `src.verify` then autoconf, build, build.modules; repeat under real execution on a Debian 13 VM. |
+| Makefile | M4 Makefile target architecture | Milestone | Implemented (repo-local; dry-run verified; M16 hardware gate pending) | M1, M2 | Modular `RULES_*` / `CONFIG_*` split with QUIET and dry-run plumbing; root-affecting targets isolated behind doctor and guards. |
+| Doctor | M5 Host and tool doctor | Milestone | Implemented (repo-local; dry-run verified; M16 hardware gate pending) | M4 | `doctor`, scoped tool doctors, `require-root`, and prefix-aware `guard-path` fail closed before root-affecting targets. |
+| Profile | M6 Profile and support matrix | Milestone | Implemented (repo-local; dry-run verified; M16 hardware gate pending) | M5 | Tracked default is `generic` only; `profile.matrix` / `profile.check` require kernel and upstream source evidence for native profiles. |
+| Patch | M7 Patch architecture | Milestone | Implemented (repo-local; dry-run verified; M16 hardware gate pending) | M4 | Declared patch registry with `patch.status`, `patch.apply`, `patch.reverse` and site/compatibility/hardware/archive classes. |
+| Kernel modules | M8 Kernel module lifecycle | Milestone | Implemented (repo-local; dry-run verified; M16 hardware gate pending) | M5, M6 | DKMS lifecycle strategy recorded; `dkms.conf` generated from the template; `module.lifecycle` reports strategy read-only. |
+| Runtime config | M9 Runtime configuration generator | Milestone | Implemented (repo-local; dry-run verified; M16 hardware gate pending) | M6 | `runtime.generate` / `runtime.lint` / `runtime.config.show` render and validate `ethercat.conf` from template and profile inputs. |
+| System integration | M10 systemd, udev, command path, and loader integration | Milestone | Implemented (repo-local; dry-run verified; M16 hardware gate pending) | M5, M8, M9 | `systemd.*`, `udev.*`, command path, and loader install/enable/start/stop/disable/remove/audit targets exist; render is non-root. |
+| Real-time host | M11 Debian 13 real-time host configuration | Milestone | Implemented (repo-local; dry-run verified; M16 hardware gate pending) | M5 | `RULES_RT` reimplements RT packages, kernel selection, limits, boot parameters, clock source, tuned, and service policy. |
+| Diagnostics | M12 RT priority and latency diagnostics | Milestone | Implemented (repo-local; dry-run verified; M16 hardware gate pending) | M11 | `RULES_RTDIAG` adds the controlled priority helper, active/optional/archive tool classification, and evidence capture. |
+| Rollback | M13 Removal and rollback | Milestone | Implemented (repo-local; dry-run verified; M16 hardware gate pending) | M5, M8, M10, M11 | `RULES_REMOVE` provides stop, disable, uninstall, purge, guard, and audit paths for EtherCAT and RT host policy state. |
+| Verification | M14 Repository-local verification harness | Milestone | Implemented (repo-local; dry-run verified; M16 hardware gate pending) | M4, M5 | `verify.all` runs reproducibility, dry-run, idempotence, and residue checks as a non-hardware regression gate. |
+| Documentation | M15 Documentation set | Milestone | Implemented (repository-local; VM and hardware gates pending) | M4 through M14 | `docs/architecture.md`, `docs/operation.md`, `docs/install.md`, `docs/removal.md`, `docs/rt-tuning.md`, and `docs/field-readiness.md` complete the system documentation set. |
 | Field validation | M16 Hardware, reboot, and production validation | External gate | Blocked | M6, M8, M11, M14 | Requires real adapter, slave chain, reboot persistence, kernel update behavior, unload/reload, and RT readiness evidence on hardware. |
+
+## Revision 2 Milestones
+
+Revision 2 is Round 2 hardening. It preserves Revision 1 as the initial
+buildout and closes repository-local safety and consistency gaps before any
+VM or hardware execution.
+
+| Topic | Work unit | Type | Status | Depends on | Evidence or next action |
+| --- | --- | --- | --- | --- | --- |
+| Scope | R2-1 Drop CCAT support | Milestone | Implemented (repo-local; verified) | Revision 1 M6, M8, M9 | Whole option branch removed, including default `--disable-ccat`; profile, runtime-module, DKMS-module, and template-comment references removed. Verified by `make print-ETHERCAT_OPTIONS`, `make profile.matrix`, and generated runtime config. |
+| Safety | R2-2 Prefix-aware path guard | Milestone | Implemented (repo-local; verified) | Revision 1 M5 | `guard-path` now requires caller-supplied expected prefix or exact file path. Negative dry-runs for `/etc/passwd`, `/tmp/not-ethercat`, and GRUB file overrides fail before mutation lines. |
+| Safety | R2-3 Root-affecting install guards | Milestone | Implemented (repo-local; verified) | R2-2 | `src_install` and `src_uninstall` carry scoped doctor, `require-root`, and prefix guard; `src_version` and `src_version.clean` remain repo-local non-root exact-file guard targets for `$(TOP)/.versions`. |
+| Doctor | R2-4 Tool doctor scope correction | Milestone | Implemented (repo-local; verified) | Revision 1 M5 | Added scoped probes for `ip`, `update-grub`, configured package manager, `dpkg`, `chrt`, and install/remove helpers. Broken override verification is covered by `make verify.doctor-overrides`. |
+| Verification | R2-5 Verification harness blind-spot closure | Milestone | Implemented (repo-local; verified) | R2-2, R2-3, R2-4 | `verify.dryrun` checks the union of root-affecting and guard-path registries, with explicit repo-local exceptions for `src_version` and `src_version.clean`. |
+| Kernel modules | R2-6 DKMS module build consistency | Milestone | Implemented (repo-local; verified) | R2-1, Revision 1 M8 | `dkms.conf` now builds from the upstream top-level module target so master and enabled device modules are produced consistently. |
+| Runtime status | R2-7 Complete runtime status reporting | Milestone | Implemented (repo-local; verified) | Revision 1 M10 | `runtime.status` reports userspace tool, command link, loader fragment, service, udev rule, master module, master devices, and selected device modules separately. |
+| Removal | R2-8 RT removal flow decoupling | Milestone | Implemented (repo-local; verified) | Revision 1 M13 | `remove.rt` no longer depends on `rt.grub.rollback`; absent backup is reported as a separate skipped rollback while limits and service cleanup remain available. |
+| Hygiene | R2-9 ASCII cleanup for code and generated output | Milestone | Implemented (repo-local; verified) | R2-1 through R2-8 | `rg -nP "[^\\x00-\\x7F]" Makefile configure templates patch examples README.md .gitignore` reports no matches after template regeneration. |
+| Documentation | R2-10 Documentation and acceptance refresh | Milestone | Implemented (repo-local; verified) | R2-1 through R2-9 | This register, `docs/dev-plan-buildout.md`, and `docs/parity-matrix.md` record Revision 2 scope, guard semantics, doctor scopes, DKMS consistency, runtime status, removal flow, and verification evidence. |
+| Regression | R2-11 Repository-local regression pass | Milestone | Implemented (repo-local; verified) | R2-10 | `make verify.all`, `make profile.matrix`, `make patch.status`, `make runtime.status`, `make rt.status`, and `make remove.audit` passed without intended host mutation. |
+| VM validation | R2-12 Debian 13 VM real-execution validation | External gate | Closed (VM real-execution validated) | R2-11 | Validation repository `ethercat-env-validation` executed the full root-affecting graph on a Debian 13 VM: build from pinned revision, prefix install, DKMS lifecycle, runtime config install, systemd/udev, RT kernel and policy, PREEMPT_RT reboot service persistence, cross-kernel DKMS rebuild with matching vermagic, and removal ending in `VERDICT=clean`. Five live-execution defects found and fixed (see R2-12 Findings). Hardware cold boot remains in R2-13/M16. |
+| Field validation | R2-13 Hardware, reboot, and production validation | External gate | Blocked | R2-12, Revision 1 M16 | Confirm real adapter, slave chain, reboot persistence, kernel-update rebuild, unload/reload, RT readiness, and production approval on target hardware. |
+
+## R2-12 Findings
+
+Live VM execution found five defects that dry-run verification structurally
+could not catch. All five are fixed and re-validated by a full clean
+acceptance run (phases p1 through p9 pass first-try on a fresh VM). The
+original failure signatures of F1 and F4 were observed live during the
+discovery run and are recorded in this table; the preserved discovery logs
+are post-fix re-runs of the same phases, and the acceptance set is the
+authoritative validation evidence.
+
+| Finding | Defect | Fix |
+| --- | --- | --- |
+| F1 | `rt.limits.install` aborted with a shell syntax error: the pipe-separated `RT_LIMITS_RULES` expanded raw into the recipe shell, which parsed `\|` as a pipe operator before IFS splitting could apply. | `configure/RULES_RT`: pass the rule list single-quoted into a shell variable, split under `set -f` with `IFS='\|'`. |
+| F2 | `/dev/EtherCAT0` stayed root-owned: udev resolves `GROUP` names at rule load time (`resolve_names=early`), and no target created the `ethercat` group, so the GROUP assignment was silently dropped. | `configure/RULES_SYSTEMD`: `udev.install` idempotently creates the system group before installing and reloading the rule; `configure/RULES_REMOVE`: `remove.purge` deletes the group and `remove.audit` checks both groups. |
+| F3 | No target installed the rendered `ethercat.conf`; `ethercatctl` kept reading the upstream default (empty `MASTER0_DEVICE`) placed by `build.install`, so the service started no master. | `configure/RULES_RUNTIME`: new root-affecting `runtime.install` (doctor, require-root, guard-path) registered in `RULES_VERIFY` and the target listing; `docs/install.md` updated. |
+| F4 | DKMS built every module against the configure-time kernel: the upstream Makefile ignores `KDIR` (uses baked `LINUX_SOURCE_DIR`) and bakes `abs_builddir`, so kernel-update builds escaped the DKMS build tree and DKMS installed the stale copied `.ko` (`module_layout` mismatch, `Exec format error` on the PREEMPT_RT boot). | `templates/dkms.conf.in`: force both `LINUX_SOURCE_DIR=/lib/modules/$kernelver/build` and `abs_builddir=/var/lib/dkms/<module>/<version>/build` as make command-line overrides in `MAKE[0]` and `CLEAN`. Cross-kernel rebuild now produces matching vermagic for a kernel that is not running. |
+| F5 | `remove.audit` counted the operator-managed RT kernel package as residue, so `verify.residue` could never pass after RT provisioning, contradicting the documented removal scope. | `configure/RULES_REMOVE`: report the package as a note outside the verdict; `docs/removal.md` aligned. |
+
+Observation recorded for D2: installing `linux-image-rt-amd64` makes GRUB
+select the RT kernel as the boot default through version ordering even though
+no target writes `GRUB_DEFAULT`; the VM reboot therefore ran PREEMPT_RT.
+D2 wording (kernel selection is explicit, post-reboot confirmation is M16)
+still holds, but operators should expect the RT kernel to win the default
+menu entry once installed.
 
 ## Profile Policy
 
@@ -269,7 +329,17 @@ document unless it is needed to prove host readiness on real hardware.
 
 ## Next Session Entry Point
 
-Start with M1 acceptance criteria, M2 source reproducibility, and narrow M4
-non-root target graph cleanup. Do not start root-affecting module install,
-systemd, udev, GRUB, service policy, or removal targets until M5 doctor and
-destructive-target guards exist.
+Revision 1 M1 through M15 and Revision 2 R2-1 through R2-12 are closed on
+branch `dev/milestone-buildout`. R2-12 was validated by real execution on a
+disposable Debian 13 VM driven from the local validation repository
+`ethercat-env-validation` (qemu/KVM, cloud image, phase scripts p1 through
+p9, evidence logs per phase). The acceptance run passes every phase first-try
+after the five R2-12 findings were fixed; the discovery and acceptance
+evidence sets are preserved in that repository.
+
+The next step is to merge `dev/milestone-buildout` to master as the closure
+baseline of this buildout, then begin the successor environment work. R2-13
+and M16 remain external hardware gates (real adapter, slave chain, hardware
+reboot persistence, unload/reload, RT readiness, production approval) and
+inherit unchanged into whatever follows; they cannot close without target
+hardware.

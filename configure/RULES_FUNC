@@ -19,6 +19,84 @@ for i in $(wildcard $(TOP)/patch/$(SRC_TAG)*.p0.patch); do\
 done
 endef
 
+# ---------------------------------------------------------------------------
+# Class-aware patch helpers (M7).
+#
+# The registry (patch/registry.mk) declares PATCH_FILES_<class> per class and
+# the canonical class list PATCH_CLASSES. These macros each take ONE class name
+# and apply / reverse / report its declared file list with patch -p0. They loop
+# entirely in shell over the class file list, which make expands via
+# $(PATCH_FILES_$(1)) at call time. No $(foreach) appears in any recipe, so the
+# literal ')' in patch dry-run pipelines never trips the foreach parser.
+#
+# A file already in the requested state is detected with a -p0 dry-run and
+# skipped, so apply / reverse are idempotent.
+# ---------------------------------------------------------------------------
+
+# reverse_list: $(1) = space-separated list. Expands to the list reversed, so a
+# multi-class apply unwinds in the opposite order on reverse.
+reverse_list = $(if $(strip $(1)),$(call reverse_list,$(wordlist 2,$(words $(1)),$(1))) $(firstword $(1)))
+
+# apply_patch_class: $(1) = class name. Applies each file in PATCH_FILES_<class>.
+define apply_patch_class
+	files="$(PATCH_FILES_$(1))"; \
+	if [ -z "$$files" ]; then \
+		printf "  %-13s no patches declared\n" "$(1)"; \
+	else \
+		for p in $$files; do \
+			if [ ! -f "$$p" ]; then \
+				printf "ERROR: %s: registered patch missing: %s\n" "$(1)" "$$p" >&2; \
+				exit 1; \
+			fi; \
+			if patch -p0 -R -s -f --dry-run -d $(SRC_PATH) < "$$p" >/dev/null 2>&1; then \
+				printf "  %-13s already applied: %s\n" "$(1)" "$$p"; \
+			else \
+				printf "  %-13s applying: %s\n" "$(1)" "$$p"; \
+				patch -p0 -d $(SRC_PATH) < "$$p"; \
+			fi; \
+		done; \
+	fi
+endef
+
+# reverse_patch_class: $(1) = class name. Reverses each file in PATCH_FILES_<class>.
+define reverse_patch_class
+	files="$(PATCH_FILES_$(1))"; \
+	if [ -z "$$files" ]; then \
+		printf "  %-13s no patches declared\n" "$(1)"; \
+	else \
+		for p in $$files; do \
+			if [ ! -f "$$p" ]; then \
+				printf "ERROR: %s: registered patch missing: %s\n" "$(1)" "$$p" >&2; \
+				exit 1; \
+			fi; \
+			if patch -p0 -s -f --dry-run -d $(SRC_PATH) < "$$p" >/dev/null 2>&1; then \
+				printf "  %-13s not applied: %s\n" "$(1)" "$$p"; \
+			else \
+				printf "  %-13s reversing: %s\n" "$(1)" "$$p"; \
+				patch -p0 -R -d $(SRC_PATH) < "$$p"; \
+			fi; \
+		done; \
+	fi
+endef
+
+# patch_status_class: $(1) = class name. Read-only pristine-vs-patched report.
+define patch_status_class
+	files="$(PATCH_FILES_$(1))"; \
+	if [ -z "$$files" ]; then \
+		printf "  %-13s pristine (no patches declared)\n" "$(1)"; \
+	else \
+		for p in $$files; do \
+			if [ ! -f "$$p" ]; then \
+				printf "  %-13s MISSING   %s\n" "$(1)" "$$p"; \
+			elif patch -p0 -R -s -f --dry-run -d $(SRC_PATH) < "$$p" >/dev/null 2>&1; then \
+				printf "  %-13s patched   %s\n" "$(1)" "$$p"; \
+			else \
+				printf "  %-13s pristine  %s\n" "$(1)" "$$p"; \
+			fi; \
+		done; \
+	fi
+endef
+
 GIT_VERSION:=$(lastword $(shell git --version))
 
 define gitclone
@@ -37,6 +115,25 @@ endef
 
 define checkfile
 $(if $(wildcard $(1)), @echo "There is no source path at $(1).",@echo ">>> Found exist$(1) will be deleted." && rm -f $(1) )
+endef
+
+# verify_revision EXPECTED PATH
+# Assert the checked-out revision at PATH ($1=expected SRC_HASH, $2=SRC_PATH)
+# matches the pinned EXPECTED value. FAIL-CLOSED: an empty expected value or an
+# empty observed revision is treated as a mismatch, never as a pass.
+define verify_revision
+	expected="$(1)"; \
+	observed="$$(git -C $(2) describe --tags 2>/dev/null)"; \
+	if [ -z "$$expected" ]; then \
+		printf "src.verify: FAIL - SRC_HASH is empty (fail-closed)\n" >&2; exit 1; \
+	fi; \
+	if [ -z "$$observed" ]; then \
+		printf "src.verify: FAIL - observed revision is empty at %s (fail-closed)\n" "$(2)" >&2; exit 1; \
+	fi; \
+	if [ "$$expected" != "$$observed" ]; then \
+		printf "src.verify: FAIL - expected %s but observed %s\n" "$$expected" "$$observed" >&2; exit 1; \
+	fi; \
+	printf "src.verify: OK - revision %s matches SRC_HASH\n" "$$observed"
 endef
 
 
@@ -60,4 +157,9 @@ VARS_EXCLUDES+=gitclone
 VARS_EXCLUDES+=gitclone2
 VARS_EXCLUDES+=distclean
 VARS_EXCLUDES+=checkfile
+VARS_EXCLUDES+=verify_revision
+VARS_EXCLUDES+=reverse_list
+VARS_EXCLUDES+=apply_patch_class
+VARS_EXCLUDES+=reverse_patch_class
+VARS_EXCLUDES+=patch_status_class
 

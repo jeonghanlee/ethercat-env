@@ -9,7 +9,7 @@ help:
 	$(info --------------------------------------- )
 	$(info Make Targets)
 	$(info --------------------------------------- )
-	$(QUIET) awk '/^[a-zA-Z\-\_0-9]+:/ {            \
+	$(QUIET) awk '/^[a-zA-Z._0-9-]+:/ {            \
 	  nb = sub( /^## /, "", helpMsg );              \
 	  if(nb == 0) {                                 \
 	    helpMsg = $$0;                              \
@@ -24,10 +24,11 @@ help:
 
 default: help
 
-.PHONY: init clone update deinit distclean
+.PHONY: init clone update deinit distclean src.verify src.revision
 
 ## Clone Source
-init: clone update
+# src.verify runs last so "make init" fails if the branch moved off the pin.
+init: clone update src.verify
 
 # gitclone use '-C' option, so git version should be more than 1.8.5. CentOS7 git is imcompatiable.
 #
@@ -37,13 +38,20 @@ clone:
 update:
 	$(QUIET)cd $(SRC_PATH) && git submodule update --init ./
 
+## Verify the checked-out revision matches the pinned SRC_HASH (fail-closed)
+src.verify:
+	$(QUIET) $(call verify_revision,$(SRC_HASH),$(SRC_PATH))
+
+## Print the observed revision next to the expected SRC_HASH (read-only)
+src.revision:
+	$(QUIET)printf ">> Expected SRC_HASH : %s\n" "$(SRC_HASH)"
+	$(QUIET)printf ">> Observed revision : %s\n" "$$(git -C $(SRC_PATH) describe --tags 2>/dev/null)"
+
 
 deinit: distclean
 
 ## Clean Source
 distclean:
 	$(call distclean, $(SRC_PATH))
-
-deinit: distclean
 
 

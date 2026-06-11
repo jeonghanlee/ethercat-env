@@ -1,0 +1,310 @@
+# RULES_SYSTEMD - systemd / udev / command-path / loader integration (M10).
+#
+# Depends on M5 (doctor + guard macros), M8 (module lifecycle), M9 (runtime
+# config). Root-affecting; doctor.systemd precedes every host-mutating target.
+#
+# SAFETY CONTRACT for every root-affecting target in this file:
+#   (1) doctor.systemd (systemctl + udevadm + ldconfig present) is a NORMAL
+#       prerequisite that exits non-zero on a missing required tool (fail-closed);
+#   (2) require-root runs as the FIRST recipe line;
+#   (3) every host mutation is routed through $(SUDO);
+#   (4) every install/remove that writes or removes under a PATH PREFIX
+#       (/etc/systemd/system, /etc/udev/rules.d, /usr/bin, /etc/ld.so.conf.d)
+#       wraps the write/rm with guard-path; systemctl / udevadm / ldconfig
+#       mutations are gated by doctor.systemd + require-root only (no guard-path,
+#       per the M14 verification policy).
+#
+# STAGING-FIRST RENDER MODEL
+# --------------------------
+# Templates under templates/ render to a REPOSITORY-LOCAL staging path
+# ($(SYSTEMD_STAGE)) via the non-root *.render targets. Only the *.install
+# targets copy a staged artifact into the system location. Render never touches
+# the host; install is the single root-affecting copy step.
+#
+# Data flow
+# ---------
+#   templates/epics-ethercat.service.in -> $(SYSTEMD_STAGE)/$(SYSTEMD_UNIT_NAME)
+#       -> (systemd.install) $(SYSTEMD_UNIT_DIR)/$(SYSTEMD_UNIT_NAME)
+#   templates/99-EtherCAT.rules.in      -> $(SYSTEMD_STAGE)/$(ECAT_UDEV_NAME)
+#       -> (udev.install) $(ECAT_UDEV_DIR)/$(ECAT_UDEV_NAME)
+
+.PHONY: systemd.render systemd.install systemd.enable systemd.start systemd.stop \
+        systemd.disable systemd.remove \
+        udev.render udev.install udev.remove \
+        command.install command.audit loader.install loader.audit \
+        runtime.status sd_stop sd_disable sd_clean
+
+# Repository-local staging directory (never /etc). Overridable via .local.
+SYSTEMD_STAGE        ?= $(TOP)/build/systemd
+SYSTEMD_UNIT_TEMPLATE ?= $(TOP)/templates/epics-ethercat.service.in
+ECAT_UDEV_TEMPLATE    ?= $(TOP)/templates/99-EtherCAT.rules.in
+
+# Resolved staged + installed absolute paths.
+SYSTEMD_STAGE_UNIT   = $(SYSTEMD_STAGE)/$(SYSTEMD_UNIT_NAME)
+SYSTEMD_DEST_UNIT    = $(SYSTEMD_UNIT_DIR)/$(SYSTEMD_UNIT_NAME)
+ECAT_UDEV_STAGE_RULE = $(SYSTEMD_STAGE)/$(ECAT_UDEV_NAME)
+ECAT_UDEV_DEST_RULE  = $(ECAT_UDEV_DIR)/$(ECAT_UDEV_NAME)
+LOADER_STAGE_CONF    = $(SYSTEMD_STAGE)/$(LOADER_CONF_NAME)
+LOADER_DEST_CONF     = $(LOADER_CONF_DIR)/$(LOADER_CONF_NAME)
+
+# ---------------------------------------------------------------------------
+# systemd service
+# ---------------------------------------------------------------------------
+
+## Render the systemd unit from its template into the repo-local staging path (non-root)
+systemd.render:
+	$(QUIET)if [ ! -f "$(SYSTEMD_UNIT_TEMPLATE)" ]; then \
+		printf "systemd.render: FAIL - template not found: %s\n" "$(SYSTEMD_UNIT_TEMPLATE)" >&2; exit 1; \
+	fi
+	$(QUIET)mkdir -p "$(SYSTEMD_STAGE)"
+	$(QUIET)sed \
+		-e 's|@ETHERCATCTL@|$(ETHERCATCTL_PATH)|g' \
+		"$(SYSTEMD_UNIT_TEMPLATE)" > "$(SYSTEMD_STAGE_UNIT)"
+	$(QUIET)printf "systemd.render: OK - staged %s\n" "$(SYSTEMD_STAGE_UNIT)"
+
+# Root-affecting: copies the staged unit into $(SYSTEMD_UNIT_DIR) and reloads
+# systemd. The path-prefix write is wrapped with guard-path; the systemctl
+# daemon-reload is gated by doctor.systemd + require-root.
+## Install the staged systemd unit into the system unit directory (root-affecting)
+systemd.install: doctor.systemd doctor.install systemd.render
+	$(QUIET)$(call require-root)
+	+$(QUIET)$(call guard-path,$(SYSTEMD_DEST_UNIT),$(SYSTEMD_UNIT_DIR))
+	$(SUDO) install -m 0644 "$(SYSTEMD_STAGE_UNIT)" "$(SYSTEMD_DEST_UNIT)"
+	$(SUDO) systemctl daemon-reload
+	$(QUIET)printf "systemd.install: OK - installed %s\n" "$(SYSTEMD_DEST_UNIT)"
+
+## Enable the service to start on boot (root-affecting)
+systemd.enable: doctor.systemd
+	$(QUIET)$(call require-root)
+	$(SUDO) systemctl enable $(SYSTEMD_UNIT_NAME)
+
+## Start the service now (root-affecting)
+systemd.start: doctor.systemd
+	$(QUIET)$(call require-root)
+	$(SUDO) systemctl start $(SYSTEMD_UNIT_NAME)
+
+## Stop the service now (root-affecting)
+systemd.stop: doctor.systemd
+	$(QUIET)$(call require-root)
+	$(SUDO) systemctl stop $(SYSTEMD_UNIT_NAME)
+
+## Disable the service from starting on boot (root-affecting)
+systemd.disable: doctor.systemd
+	$(QUIET)$(call require-root)
+	$(SUDO) systemctl disable $(SYSTEMD_UNIT_NAME)
+
+# Root-affecting: stops + disables, then removes the installed unit and reloads.
+# The rm is wrapped with guard-path; systemctl steps are gated by
+# doctor.systemd + require-root.
+## Remove the installed systemd unit (stop, disable, rm, reload) (root-affecting)
+systemd.remove: doctor.systemd doctor.install sd_stop sd_disable
+	$(QUIET)$(call require-root)
+	+$(QUIET)$(call guard-path,$(SYSTEMD_DEST_UNIT),$(SYSTEMD_UNIT_DIR))
+	$(SUDO) rm -f "$(SYSTEMD_DEST_UNIT)"
+	$(SUDO) systemctl daemon-reload
+	$(QUIET)printf "systemd.remove: OK - removed %s\n" "$(SYSTEMD_DEST_UNIT)"
+
+# ---------------------------------------------------------------------------
+# sd_* - the previously-dangling prerequisites referenced by src_uninstall
+# (RULES_INSTALL). Now real, root-affecting, and consumed by M13 removal.
+# sd_stop / sd_disable degrade cleanly if the unit was never installed.
+# ---------------------------------------------------------------------------
+
+## Stop the service if present (no-op when absent) (root-affecting)
+sd_stop: doctor.systemd
+	$(QUIET)$(call require-root)
+	$(QUIET)if $(SUDO) systemctl is-active --quiet $(SYSTEMD_UNIT_NAME) 2>/dev/null; then \
+		printf "sd_stop: stopping %s\n" "$(SYSTEMD_UNIT_NAME)"; \
+		$(SUDO) systemctl stop $(SYSTEMD_UNIT_NAME); \
+	else \
+		printf "sd_stop: %s not active - nothing to stop\n" "$(SYSTEMD_UNIT_NAME)"; \
+	fi
+
+## Disable the service if enabled (no-op when absent) (root-affecting)
+sd_disable: doctor.systemd
+	$(QUIET)$(call require-root)
+	$(QUIET)if $(SUDO) systemctl is-enabled --quiet $(SYSTEMD_UNIT_NAME) 2>/dev/null; then \
+		printf "sd_disable: disabling %s\n" "$(SYSTEMD_UNIT_NAME)"; \
+		$(SUDO) systemctl disable $(SYSTEMD_UNIT_NAME); \
+	else \
+		printf "sd_disable: %s not enabled - nothing to disable\n" "$(SYSTEMD_UNIT_NAME)"; \
+	fi
+
+# Root-affecting: removes the installed unit file and reloads systemd. The rm is
+# wrapped with guard-path. This is the file-level cleanup consumed by the
+# prefix-tree src_uninstall.
+## Remove the installed unit file and reload systemd (root-affecting)
+sd_clean: doctor.systemd doctor.install
+	$(QUIET)$(call require-root)
+	+$(QUIET)$(call guard-path,$(SYSTEMD_DEST_UNIT),$(SYSTEMD_UNIT_DIR))
+	$(SUDO) rm -f "$(SYSTEMD_DEST_UNIT)"
+	$(SUDO) systemctl daemon-reload
+	$(QUIET)printf "sd_clean: OK - cleaned %s\n" "$(SYSTEMD_DEST_UNIT)"
+
+# ---------------------------------------------------------------------------
+# udev rule
+# ---------------------------------------------------------------------------
+
+## Render the udev rule from its template into the repo-local staging path (non-root)
+udev.render:
+	$(QUIET)if [ ! -f "$(ECAT_UDEV_TEMPLATE)" ]; then \
+		printf "udev.render: FAIL - template not found: %s\n" "$(ECAT_UDEV_TEMPLATE)" >&2; exit 1; \
+	fi
+	$(QUIET)mkdir -p "$(SYSTEMD_STAGE)"
+	$(QUIET)sed \
+		-e 's|@ECAT_DEV_MODE@|$(ECAT_DEV_MODE)|g' \
+		-e 's|@ECAT_DEV_GROUP@|$(ECAT_DEV_GROUP)|g' \
+		"$(ECAT_UDEV_TEMPLATE)" > "$(ECAT_UDEV_STAGE_RULE)"
+	$(QUIET)printf "udev.render: OK - staged %s\n" "$(ECAT_UDEV_STAGE_RULE)"
+
+# Root-affecting: ensures the device access group exists, then copies the staged
+# rule into $(ECAT_UDEV_DIR) and reloads udev. udev resolves GROUP names when the
+# rules are loaded (resolve_names=early): if $(ECAT_DEV_GROUP) does not exist at
+# reload time the GROUP assignment is silently dropped and the device node stays
+# root-owned, so the group must be created BEFORE the rule install and reload.
+# The path-prefix write is wrapped with guard-path; udevadm is gated by
+# doctor.systemd + require-root; groupadd/getent come from doctor.install.
+## Install the staged udev rule and reload udev (root-affecting)
+udev.install: doctor.systemd doctor.install udev.render
+	$(QUIET)$(call require-root)
+	+$(QUIET)$(call guard-path,$(ECAT_UDEV_DEST_RULE),$(ECAT_UDEV_DIR))
+	$(QUIET)if getent group "$(ECAT_DEV_GROUP)" >/dev/null 2>&1; then \
+		printf "udev.install: group %s already present\n" "$(ECAT_DEV_GROUP)"; \
+	else \
+		printf "udev.install: creating group %s\n" "$(ECAT_DEV_GROUP)"; \
+		$(SUDO) groupadd --system "$(ECAT_DEV_GROUP)"; \
+	fi
+	$(SUDO) install -m 0644 "$(ECAT_UDEV_STAGE_RULE)" "$(ECAT_UDEV_DEST_RULE)"
+	$(SUDO) udevadm control --reload-rules
+	$(QUIET)printf "udev.install: OK - installed %s\n" "$(ECAT_UDEV_DEST_RULE)"
+
+# Root-affecting: removes the installed rule and reloads udev. The rm is wrapped
+# with guard-path.
+## Remove the installed udev rule and reload udev (root-affecting)
+udev.remove: doctor.systemd doctor.install
+	$(QUIET)$(call require-root)
+	+$(QUIET)$(call guard-path,$(ECAT_UDEV_DEST_RULE),$(ECAT_UDEV_DIR))
+	$(SUDO) rm -f "$(ECAT_UDEV_DEST_RULE)"
+	$(SUDO) udevadm control --reload-rules
+	$(QUIET)printf "udev.remove: OK - removed %s\n" "$(ECAT_UDEV_DEST_RULE)"
+
+# ---------------------------------------------------------------------------
+# command path (/usr/bin/ethercat)
+# ---------------------------------------------------------------------------
+
+# Root-affecting: exposes the prefix-tree tool on PATH via a symlink. The
+# symlink write is under a path prefix, so guard-path wraps it.
+## Expose the prefix-tree ethercat tool at $(COMMAND_LINK) (root-affecting)
+command.install: doctor.systemd doctor.install
+	$(QUIET)$(call require-root)
+	+$(QUIET)$(call guard-path,$(COMMAND_LINK),$(COMMAND_LINK_GUARD),exact)
+	$(SUDO) ln -sf "$(COMMAND_TARGET)" "$(COMMAND_LINK)"
+	$(QUIET)printf "command.install: OK - %s -> %s\n" "$(COMMAND_LINK)" "$(COMMAND_TARGET)"
+
+## Report the command-path exposure and PATH discovery (read-only, non-root)
+command.audit:
+	$(QUIET)printf "command.audit: link   = %s\n" "$(COMMAND_LINK)"
+	$(QUIET)printf "command.audit: target = %s\n" "$(COMMAND_TARGET)"
+	$(QUIET)if [ -L "$(COMMAND_LINK)" ]; then \
+		printf "command.audit: present (-> %s)\n" "$$(readlink "$(COMMAND_LINK)")"; \
+	elif [ -e "$(COMMAND_LINK)" ]; then \
+		printf "command.audit: present (not a symlink)\n"; \
+	else \
+		printf "command.audit: absent\n"; \
+	fi
+	$(QUIET)if command -v ethercat >/dev/null 2>&1; then \
+		printf "command.audit: on PATH at %s\n" "$$(command -v ethercat)"; \
+	else \
+		printf "command.audit: not on PATH\n"; \
+	fi
+
+# ---------------------------------------------------------------------------
+# loader (ldconfig)
+# ---------------------------------------------------------------------------
+
+## Render the ld.so.conf.d fragment into the repo-local staging path (non-root)
+loader.render:
+	$(QUIET)mkdir -p "$(SYSTEMD_STAGE)"
+	$(QUIET)printf "%s\n" "$(LOADER_LIBDIR)" > "$(LOADER_STAGE_CONF)"
+	$(QUIET)printf "loader.render: OK - staged %s (%s)\n" "$(LOADER_STAGE_CONF)" "$(LOADER_LIBDIR)"
+
+# Root-affecting: installs the ld.so.conf.d fragment and runs ldconfig. The
+# fragment write is under a path prefix, so guard-path wraps it; ldconfig is
+# gated by doctor.systemd + require-root.
+## Install the ld.so.conf.d fragment and run ldconfig (root-affecting)
+loader.install: doctor.systemd doctor.install loader.render
+	$(QUIET)$(call require-root)
+	+$(QUIET)$(call guard-path,$(LOADER_DEST_CONF),$(LOADER_CONF_DIR))
+	$(SUDO) install -m 0644 "$(LOADER_STAGE_CONF)" "$(LOADER_DEST_CONF)"
+	$(SUDO) ldconfig
+	$(QUIET)printf "loader.install: OK - installed %s and ran ldconfig\n" "$(LOADER_DEST_CONF)"
+
+## Report loader fragment + libdir resolution (read-only, non-root)
+loader.audit:
+	$(QUIET)printf "loader.audit: fragment = %s\n" "$(LOADER_DEST_CONF)"
+	$(QUIET)printf "loader.audit: libdir   = %s\n" "$(LOADER_LIBDIR)"
+	$(QUIET)if [ -f "$(LOADER_DEST_CONF)" ]; then \
+		printf "loader.audit: fragment present\n"; \
+	else \
+		printf "loader.audit: fragment absent\n"; \
+	fi
+	$(QUIET)PATH="$$PATH:/usr/sbin:/sbin"; \
+	if command -v ldconfig >/dev/null 2>&1 && ldconfig -p 2>/dev/null | grep -q "libethercat"; then \
+		printf "loader.audit: libethercat resolved by the runtime linker\n"; \
+	else \
+		printf "loader.audit: libethercat not resolved (not installed or ldconfig not run)\n"; \
+	fi
+
+# ---------------------------------------------------------------------------
+# runtime.status - read-only, non-root. Reports independent runtime states:
+# userspace binary, command link, loader fragment, service, udev rule, loaded
+# module, configured master devices, and selected device profile. Never mutates
+# anything.
+# ---------------------------------------------------------------------------
+
+## Report runtime integration state independently (read-only)
+runtime.status:
+	$(QUIET)PATH="$$PATH:/usr/sbin:/sbin"; \
+	printf "runtime.status: ===== EtherCAT runtime state (read-only) =====\n"; \
+	if command -v ethercat >/dev/null 2>&1; then \
+		printf "runtime.status: userspace tool : present (%s)\n" "$$(command -v ethercat)"; \
+	else \
+		printf "runtime.status: userspace tool : absent\n"; \
+	fi; \
+	if [ -L "$(COMMAND_LINK)" ]; then \
+		printf "runtime.status: command link   : symlink -> %s\n" "$$(readlink "$(COMMAND_LINK)")"; \
+	elif [ -e "$(COMMAND_LINK)" ]; then \
+		printf "runtime.status: command link   : present (not a symlink)\n"; \
+	else \
+		printf "runtime.status: command link   : absent\n"; \
+	fi; \
+	if [ -f "$(LOADER_DEST_CONF)" ]; then \
+		printf "runtime.status: loader fragment: present (%s)\n" "$(LOADER_DEST_CONF)"; \
+	else \
+		printf "runtime.status: loader fragment: absent (%s)\n" "$(LOADER_DEST_CONF)"; \
+	fi; \
+	if command -v systemctl >/dev/null 2>&1; then \
+		st="$$(systemctl is-active $(SYSTEMD_UNIT_NAME) 2>/dev/null)"; \
+		en="$$(systemctl is-enabled $(SYSTEMD_UNIT_NAME) 2>/dev/null)"; \
+		printf "runtime.status: service        : active=%s enabled=%s\n" "$${st:-unknown}" "$${en:-unknown}"; \
+	else \
+		printf "runtime.status: service        : systemctl unavailable\n"; \
+	fi; \
+	if [ -f "$(ECAT_UDEV_DEST_RULE)" ]; then \
+		printf "runtime.status: udev rule      : present (%s)\n" "$(ECAT_UDEV_DEST_RULE)"; \
+	else \
+		printf "runtime.status: udev rule      : absent (%s)\n" "$(ECAT_UDEV_DEST_RULE)"; \
+	fi; \
+	if lsmod 2>/dev/null | grep -q '^ec_master'; then \
+		printf "runtime.status: master module  : loaded (ec_master)\n"; \
+	else \
+		printf "runtime.status: master module  : not loaded\n"; \
+	fi; \
+	printf "runtime.status: master devices : %s\n" "$(RUNTIME_MASTER0)"; \
+	printf "runtime.status: device modules : %s\n" "$(strip $(RUNTIME_MODULES))"
+
+VARS_EXCLUDES+=SYSTEMD_STAGE_UNIT
+VARS_EXCLUDES+=ECAT_UDEV_STAGE_RULE
+VARS_EXCLUDES+=LOADER_STAGE_CONF
+
+-include $(TOP)/configure/RULES_SYSTEMD.local

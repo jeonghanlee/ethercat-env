@@ -1,0 +1,147 @@
+# RULES_DOCTOR - host/tool doctor target and reusable safety guard macros.
+#
+# Loaded early in the RULES aggregator so guard-path / require-root are defined
+# before any later module references them. The doctor target is read-only: it
+# probes for tools and reports presence, never installing anything.
+
+.PHONY: doctor doctor.tools doctor.kernel doctor.systemd doctor.network \
+        doctor.grub doctor.package doctor.install doctor.rtdiag
+
+# doctor_probe SCOPE TOOL-LIST
+# Shared read-only probing loop. $(1) is a label used in the report and the
+# fail message; $(2) is a space-separated list of tool NAMES (each resolved to
+# its command via DOCTOR_TOOL_<name>). FAIL-CLOSED: any missing tool makes the
+# recipe exit non-zero, so a root-affecting recipe never starts on an
+# under-provisioned host. Never installs anything.
+define doctor_probe
+	PATH="$$PATH:/usr/local/sbin:/usr/sbin:/sbin"; missing=""; \
+	for name in $(2); do \
+		cmd="$$(eval "echo \$$DOCTOR_TOOL_$$name")"; \
+		[ -n "$$cmd" ] || cmd="$$name"; \
+		if command -v "$$cmd" >/dev/null 2>&1; then \
+			printf "doctor[%s]: present  %-12s (%s)\n" "$(1)" "$$name" "$$(command -v "$$cmd")"; \
+		else \
+			printf "doctor[%s]: MISSING  %-12s (%s)\n" "$(1)" "$$name" "$$cmd" >&2; \
+			missing="$$missing $$name"; \
+		fi; \
+	done; \
+	if [ -n "$$missing" ]; then \
+		if [ "$(ALLOW_MISSING_DOCTOR_TOOLS)" = "YES" ]; then \
+			printf "doctor[%s]: SKIP - missing required tools allowed for dry-run inspection:%s\n" "$(1)" "$$missing"; \
+		else \
+			printf "doctor[%s]: FAIL - missing required tools:%s\n" "$(1)" "$$missing" >&2; \
+			exit 1; \
+		fi; \
+	else \
+		printf "doctor[%s]: OK - all required tools present\n" "$(1)"; \
+	fi;
+endef
+
+# doctor is wired as a NORMAL prerequisite of root-affecting targets in later
+# milestones; its recipe exits non-zero on any missing required tool so a
+# root-affecting recipe never starts on an under-provisioned host.
+## Verify every REQUIRED host tool exists and is executable (fail-closed)
+doctor:
+	+$(QUIET)$(call doctor_probe,all,$(DOCTOR_REQUIRED))
+
+# Scoped sub-doctors. A root-affecting target depends only on the scope it
+# needs: M8 DKMS lifecycle on doctor.kernel + doctor.tools (dkms + depmod), M10
+# systemd/udev/loader on doctor.systemd (systemctl + udevadm + ldconfig). Each
+# exits non-zero on a missing member of its own subset (fail-closed).
+## Verify userspace build/packaging tools (M8 DKMS): dkms, depmod (fail-closed)
+doctor.tools:
+	+$(QUIET)$(call doctor_probe,tools,$(DOCTOR_REQUIRED_tools))
+
+## Verify kernel-module tooling (M8 depmod + DKMS rebuild): depmod, dkms (fail-closed)
+doctor.kernel:
+	+$(QUIET)$(call doctor_probe,kernel,$(DOCTOR_REQUIRED_kernel))
+
+## Verify service/udev/loader tooling (M10): systemctl, udevadm, ldconfig (fail-closed)
+doctor.systemd:
+	+$(QUIET)$(call doctor_probe,systemd,$(DOCTOR_REQUIRED_systemd))
+
+## Verify NIC link tooling (M9 iface.prepare/unprepare): ip (fail-closed)
+doctor.network:
+	+$(QUIET)$(call doctor_probe,network,$(DOCTOR_REQUIRED_network))
+
+## Verify GRUB edit tooling (M11): update-grub and file-edit helpers (fail-closed)
+doctor.grub:
+	+$(QUIET)$(call doctor_probe,grub,$(DOCTOR_REQUIRED_grub))
+
+## Verify package tooling (M11/M13): package manager and dpkg (fail-closed)
+doctor.package:
+	+$(QUIET)$(call doctor_probe,package,$(DOCTOR_REQUIRED_package))
+
+## Verify prefix-tree install/remove tooling (M4/M13): install, chown, rm
+doctor.install:
+	+$(QUIET)$(call doctor_probe,install,$(DOCTOR_REQUIRED_install))
+
+## Verify RT priority tooling (M12 chrt SCHED_FIFO change): chrt (fail-closed)
+doctor.rtdiag:
+	+$(QUIET)$(call doctor_probe,rtdiag,$(DOCTOR_REQUIRED_rtdiag))
+
+# guard-path PATHVAR EXPECTED [exact]
+# Assert a path variable is non-empty, absolute, not filesystem root, and within
+# the caller-supplied expected prefix. Pass "exact" as the third argument for
+# single-file destinations that must match one fixed path.
+# Usage as the first recipe line of a path-affecting target:
+#     $(call guard-path,$(SYSTEMD_DEST_UNIT),$(SYSTEMD_UNIT_DIR))
+#     $(call guard-path,$(COMMAND_LINK),$(COMMAND_LINK_GUARD),exact)
+# FAIL-CLOSED: an empty or non-absolute value aborts before the destructive
+# command is reached. An empty expected prefix also aborts so callers cannot
+# accidentally reduce the check to absolute-path-only validation.
+define guard-path
+	p="$(1)"; expected="$(2)"; mode="$(3)"; \
+	if [ -z "$$p" ]; then \
+		printf "guard-path: FAIL - path is empty (fail-closed)\n" >&2; exit 1; \
+	fi; \
+	if [ -z "$$expected" ]; then \
+		printf "guard-path: FAIL - expected prefix is empty for %s (fail-closed)\n" "$$p" >&2; exit 1; \
+	fi; \
+	case "$$p" in \
+		/ | // | ///) printf "guard-path: FAIL - refuses filesystem root: %s (fail-closed)\n" "$$p" >&2; exit 1;; \
+	esac; \
+	case "$$p" in \
+		/*) : ;; \
+		*) printf "guard-path: FAIL - path is not absolute: %s\n" "$$p" >&2; exit 1;; \
+	esac; \
+	case "$$expected" in \
+		/ | // | ///) printf "guard-path: FAIL - refuses filesystem root as expected prefix: %s\n" "$$expected" >&2; exit 1;; \
+		/*) : ;; \
+		*) printf "guard-path: FAIL - expected prefix is not absolute: %s\n" "$$expected" >&2; exit 1;; \
+	esac; \
+	case "$$mode" in \
+		exact) \
+			if [ "$$p" != "$$expected" ]; then \
+				printf "guard-path: FAIL - path %s does not match expected file %s\n" "$$p" "$$expected" >&2; exit 1; \
+			fi; \
+			;; \
+		""|prefix) \
+			case "$$p" in \
+				"$$expected"|"$$expected"/*) : ;; \
+				*) printf "guard-path: FAIL - path %s is outside expected prefix %s\n" "$$p" "$$expected" >&2; exit 1;; \
+			esac; \
+			;; \
+		*) printf "guard-path: FAIL - invalid mode: %s\n" "$$mode" >&2; exit 1;; \
+	esac; \
+	printf "guard-path: OK - %s\n" "$$p"
+endef
+
+# require-root
+# Run as the FIRST recipe line of every root-affecting target. Asserts the
+# operation has the privilege it needs, or is routed through $(SUDO).
+# FAIL-CLOSED: when not root and no SUDO is configured, abort before any change.
+define require-root
+	if [ "$$(id -u)" -ne 0 ] && [ -z "$(SUDO)" ]; then \
+		printf "require-root: FAIL - root privilege required and no SUDO configured (fail-closed)\n" >&2; \
+		exit 1; \
+	fi; \
+	printf "require-root: OK\n"
+endef
+
+VARS_EXCLUDES+=guard-path
+VARS_EXCLUDES+=require-root
+VARS_EXCLUDES+=doctor_probe
+VARS_EXCLUDES+=ALLOW_MISSING_DOCTOR_TOOLS
+
+-include $(TOP)/configure/RULES_DOCTOR.local

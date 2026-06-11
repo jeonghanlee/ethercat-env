@@ -1,13 +1,42 @@
-.PHONY: patch.apply patch.revert patch.make
+# -*- mode: makefile-gmake; -*-
+#
+# Patch lifecycle (M7): class-aware apply / reverse / status.
+#
+# The patch registry (patch/registry.mk) declares the class -> file-list
+# mapping and the canonical class lists. The class-aware macros live in
+# RULES_FUNC; this file wires them to user targets, one $(call) per class.
+#
+# Each recipe expands a $(foreach) whose body is a single $(call <macro>,<class>)
+# reference. The macro body lives in a define and is only expanded after the
+# foreach finishes parsing, so the literal ')' inside the patch dry-run pipelines
+# never terminates the foreach early.
+#
+# No patch is applied implicitly during checkout: init (RULES_SRC) does not call
+# patch.apply. The archive class is excluded from the active apply set.
 
-## Apply Patch Files
+include $(TOP)/patch/registry.mk
+
+.PHONY: patch.status patch.apply patch.reverse patch.revert patch.make
+
+## Report pristine vs patched for every declared class (read-only)
+patch.status:
+	$(QUIET)printf "Patch status (source: %s)\n" "$(SRC_PATH)"
+	$(QUIET)printf -- "-----------------------------------------------\n"
+	$(QUIET)$(foreach c,$(PATCH_CLASSES),$(call patch_status_class,$(c)); )true
+
+## Apply every active patch class in declaration order (archive excluded)
 patch.apply:
-	$(QUIET) $(call patch_src)
+	$(QUIET)printf "Applying patch classes: %s\n" "$(PATCH_CLASSES_ACTIVE)"
+	$(QUIET)$(foreach c,$(PATCH_CLASSES_ACTIVE),$(call apply_patch_class,$(c)); )true
 
-## Revert Patch Files
-patch.revert:
-	$(QUIET) $(call revert_patch_src)
+## Reverse every active patch class in opposite order (acceptance-named)
+patch.reverse:
+	$(QUIET)printf "Reversing patch classes: %s\n" "$(PATCH_CLASSES_ACTIVE)"
+	$(QUIET)$(foreach c,$(call reverse_list,$(PATCH_CLASSES_ACTIVE)),$(call reverse_patch_class,$(c)); )true
+
+# DEPRECATED alias for patch.reverse, retained one cycle.
+patch.revert: patch.reverse
+	$(QUIET)printf "NOTE: patch.revert is deprecated; use patch.reverse\n"
 
 patch.make:
-	$(QUIET) mkdir -p $(TOP)/patch
-	$(QUIET) $(call make_p0_patch)
+	$(QUIET)printf "Creating patch is not implemented yet.\n"

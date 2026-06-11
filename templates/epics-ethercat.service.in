@@ -1,0 +1,28 @@
+#------------------------------------------------------------------------------
+#
+#  EtherCAT master systemd service (EPICS deployment flavor).
+#
+#  GENERATED FILE - do not edit by hand.
+#  Rendered by `make systemd.install` from templates/epics-ethercat.service.in.
+#  Parameter source: configure/CONFIG_SITE / RULES_SYSTEMD.
+#
+#  Type=oneshot + RemainAfterExit=yes mirrors the upstream ethercat.service:
+#  ethercatctl loads the master kernel modules and brings up the configured
+#  network interfaces on start, and unloads them on stop.
+#
+#------------------------------------------------------------------------------
+
+[Unit]
+Description=EtherCAT Master Kernel Modules (EPICS)
+After=network.target syslog.target
+Documentation=man:ethercat man:ethercatctl
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=@ETHERCATCTL@ start
+ExecStop=@ETHERCATCTL@ stop
+ExecReload=@ETHERCATCTL@ restart
+
+[Install]
+WantedBy=multi-user.target

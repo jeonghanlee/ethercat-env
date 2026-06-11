@@ -4,29 +4,42 @@ install: src_install
 uninstall: src_uninstall
 
 
-src_install: src_version src_preinst
+# src_preinst is intentionally omitted: this install path needs no pre-install
+# hook, so the install graph deliberately has no such prerequisite.
+src_install: doctor.install src_version
+	$(QUIET)$(call require-root)
+	+$(QUIET)$(call guard-path,$(INSTALL_LOCATION),$(INSTALL_PATH))
 	$(QUIET)$(SUDO) install -d $(INSTALL_LOCATION)
-	$(QUIET)$(SUDO) $(INSTALL_DATA) -b $(SITE_TEMPLATE_PATH)/.versions  $(INSTALL_LOCATION)/
+	$(QUIET)$(SUDO) $(INSTALL_DATA) -b $(SITE_VERSION_FILE)  $(INSTALL_LOCATION)/
 	$(QUIET)$(SUDO)	chown -R $(USERID):$(GROUPID) $(INSTALL_LOCATION)
 
-src_uninstall: sd_stop sd_disable sd_clean src_postrm src_version_clean
+# sd_stop / sd_disable / sd_clean are the real systemd-lifecycle targets defined
+# in RULES_SYSTEMD (M10). They run BEFORE the prefix-tree removal so the service
+# is stopped, disabled, and its unit file cleaned before the installed files go.
+# There is no separate src_postrm target: the equivalent teardown lives in the
+# sd_* targets (RULES_SYSTEMD, M10) that src_uninstall already depends on. The
+# rm -rf below is guarded by guard-path.
+src_uninstall: doctor.install sd_stop sd_disable sd_clean src_version.clean
+	$(QUIET)$(call require-root)
 	$(QUIET)echo "Removing $(INSTALL_LOCATION)..."
+	+$(QUIET)$(call guard-path,$(INSTALL_LOCATION),$(INSTALL_PATH))
 	$(QUIET)$(SUDO) rm -rf $(INSTALL_LOCATION)/
 
 .PHONY: src_version src_version.show src_version.clean
 
 src_version: FORCE
-	$(QUIET)printf ">> Timestamps       : YYYYMMDD-HHMMSS (%s)\n" "$$(date +%Y%m%d-%H%M%S)" > $(SITE_TEMPLATE_PATH)/.versions
-	$(QUIET)printf ">> SRC REMOTE URL   : %s\n" "$(SRC_GITURL)"  >> $(SITE_TEMPLATE_PATH)/.versions
-	$(QUIET)printf ">> SRC SITE VERSION : %s\n" "$(SRC_TAG)"     >> $(SITE_TEMPLATE_PATH)/.versions
-	$(QUIET)printf ">> SRC GIT  VERSION : "                      >> $(SITE_TEMPLATE_PATH)/.versions
-	$(QUIET)cd $(SRC_PATH) && git describe --tags                >> $(SITE_TEMPLATE_PATH)/.versions
+	+$(QUIET)$(call guard-path,$(SITE_VERSION_FILE),$(SITE_VERSION_GUARD),exact)
+	$(QUIET)printf ">> Timestamps       : YYYYMMDD-HHMMSS (%s)\n" "$$(date +%Y%m%d-%H%M%S)" > $(SITE_VERSION_FILE)
+	$(QUIET)printf ">> SRC REMOTE URL   : %s\n" "$(SRC_GITURL)"  >> $(SITE_VERSION_FILE)
+	$(QUIET)printf ">> SRC SITE VERSION : %s\n" "$(SRC_TAG)"     >> $(SITE_VERSION_FILE)
+	$(QUIET)printf ">> SRC GIT  VERSION : "                      >> $(SITE_VERSION_FILE)
+	$(QUIET)cd $(SRC_PATH) && git describe --tags                >> $(SITE_VERSION_FILE)
 
 src_version.show:
-	$(QUIET)cat -b $(SITE_TEMPLATE_PATH)/.versions
+	$(QUIET)cat -b $(SITE_VERSION_FILE)
 
 src_version.clean:
-	rm -rf $(SITE_TEMPLATE_PATH)/.versions
+	+$(QUIET)$(call guard-path,$(SITE_VERSION_FILE),$(SITE_VERSION_GUARD),exact)
+	rm -rf $(SITE_VERSION_FILE)
 
 FORCE:
-

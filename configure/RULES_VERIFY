@@ -1,0 +1,171 @@
+# RULES_VERIFY - repository-local verification harness (M14).
+#
+# The entire harness is dry-run / inspection / lint. It performs no install, no
+# module load, no GRUB edit, no service start, no host mutation. Its job is to
+# assert that the OTHER milestones' guards are present, and to act as the
+# regression gate for the root-affecting milestones (M8-M13) as they land.
+#
+# Scope registries
+# ----------------
+# VERIFY_ROOT_ONLY_TARGETS  root-affecting targets that write no path and must
+#                           reference `doctor` (or a scoped doctor) plus
+#                           `require-root` in expanded dry-run output.
+# VERIFY_GUARDPATH_TARGETS  path-writing targets that must reference
+#                           `guard-path`. All of these are also root-affecting
+#                           except the explicit repo-local exceptions below.
+# VERIFY_NONROOT_GUARDPATH_TARGETS
+#                           repo-local path writers that must show `guard-path`
+#                           but must not be forced through root guards.
+#
+# The effective VERIFY_ROOT_TARGETS is the union of root-only targets plus every
+# guard-path target except the repo-local exceptions. This closes the blind spot
+# where a path-writing root target could retain `guard-path` but silently lose
+# `doctor` or `require-root`.
+
+.PHONY: verify.reproducibility verify.dryrun verify.idempotence verify.doctor-overrides \
+        verify.residue verify.all
+
+# Root-affecting targets that do not write or remove a guarded path.
+VERIFY_ROOT_ONLY_TARGETS ?= \
+	iface.prepare iface.unprepare \
+	install.modules uninstall.modules \
+	add.dkms remove.dkms install.dkms uninstall.dkms \
+	systemd.enable systemd.start systemd.stop systemd.disable \
+	sd_stop sd_disable \
+	rt.kernel.provision rt.service.apply \
+	rt.priority.apply \
+	remove.stop remove.disable
+
+# Path-prefix or exact-file targets that must carry guard-path.
+VERIFY_GUARDPATH_TARGETS ?= \
+	src_install src_uninstall src_version src_version.clean \
+	systemd.install systemd.remove sd_clean \
+	udev.install udev.remove \
+	command.install loader.install runtime.install \
+	rt.limits.install rt.grub.apply rt.grub.rollback \
+	remove.uninstall remove.rt remove.purge
+
+# Repo-local path writers. They write only $(TOP)/.versions and must not acquire
+# doctor or require-root.
+VERIFY_NONROOT_GUARDPATH_TARGETS ?= src_version src_version.clean
+
+VERIFY_ROOT_TARGETS ?= \
+	$(VERIFY_ROOT_ONLY_TARGETS) \
+	$(filter-out $(VERIFY_NONROOT_GUARDPATH_TARGETS),$(VERIFY_GUARDPATH_TARGETS))
+
+VERIFY_ALL_DRYRUN_TARGETS ?= \
+	$(sort $(VERIFY_ROOT_TARGETS) $(VERIFY_GUARDPATH_TARGETS))
+
+# The recursive dry-run captures below run with -j1. The harness is inspection-
+# only, and a parallel jobserver lets recursive sub-makes interleave and
+# occasionally drop a prerequisite's recipe line from a captured dry-run, which
+# would produce a spurious guard FAIL. Serial sub-makes make the capture
+# deterministic; correctness, not speed, governs the verification harness.
+VERIFY_DRYRUN = $(MAKE) -j1 --no-print-directory ALLOW_MISSING_DOCTOR_TOOLS=YES --dry-run
+
+## Assert the pinned revision is reachable (src.verify) - non-hardware
+verify.reproducibility:
+	$(QUIET)printf "verify.reproducibility: checking pinned revision via src.verify\n"
+	$(QUIET)$(MAKE) --no-print-directory src.verify
+	$(QUIET)printf "verify.reproducibility: OK - init would reach the pinned revision\n"
+
+## Assert every registered root-affecting target is guarded in its dry-run
+verify.dryrun:
+	$(QUIET)rc=0; \
+	for t in $(VERIFY_ROOT_TARGETS); do \
+		target_rc=0; \
+		out="$$($(VERIFY_DRYRUN) $$t 2>/dev/null)"; \
+		if [ -z "$$out" ]; then \
+			printf "verify.dryrun: FAIL - %s produced empty dry-run\n" "$$t" >&2; rc=1; continue; \
+		fi; \
+		case "$$out" in \
+			*doctor:*|*doctor[[]*) : ;; \
+			*) printf "verify.dryrun: FAIL - %s dry-run lacks a doctor reference\n" "$$t" >&2; target_rc=1;; \
+		esac; \
+		case "$$out" in \
+			*require-root:*) : ;; \
+			*) printf "verify.dryrun: FAIL - %s dry-run lacks require-root\n" "$$t" >&2; target_rc=1;; \
+		esac; \
+		if [ "$$target_rc" -eq 0 ]; then printf "verify.dryrun: OK   - %s (doctor + require-root)\n" "$$t"; else rc=1; fi; \
+	done; \
+	for t in $(VERIFY_GUARDPATH_TARGETS); do \
+		out="$$($(VERIFY_DRYRUN) $$t 2>/dev/null)"; \
+		if [ -z "$$out" ]; then \
+			printf "verify.dryrun: FAIL - %s produced empty dry-run\n" "$$t" >&2; rc=1; continue; \
+		fi; \
+		case "$$out" in \
+			*guard-path:*) printf "verify.dryrun: OK   - %s (guard-path)\n" "$$t";; \
+			*) printf "verify.dryrun: FAIL - %s writes a path but lacks guard-path\n" "$$t" >&2; rc=1;; \
+		esac; \
+	done; \
+	for t in $(VERIFY_NONROOT_GUARDPATH_TARGETS); do \
+		out="$$($(VERIFY_DRYRUN) $$t 2>/dev/null)"; \
+		case "$$out" in \
+			*require-root:*|*doctor:*|*doctor[[]*) \
+				printf "verify.dryrun: FAIL - %s is repo-local but dry-run shows root guards\n" "$$t" >&2; rc=1;; \
+			*) printf "verify.dryrun: OK   - %s (repo-local guard-path only)\n" "$$t";; \
+		esac; \
+	done; \
+	if [ "$$rc" -ne 0 ]; then exit 1; fi; \
+	printf "verify.dryrun: OK - all registered targets guarded\n"
+
+## Assert repeated dry-run output for registered targets is byte-stable
+verify.idempotence:
+	$(QUIET)rc=0; \
+	for t in $(VERIFY_ALL_DRYRUN_TARGETS); do \
+		a="$$($(VERIFY_DRYRUN) $$t 2>/dev/null)"; \
+		b="$$($(VERIFY_DRYRUN) $$t 2>/dev/null)"; \
+		if [ "$$a" != "$$b" ]; then \
+			printf "verify.idempotence: FAIL - %s dry-run not stable across runs\n" "$$t" >&2; rc=1; \
+		else \
+			printf "verify.idempotence: OK   - %s stable\n" "$$t"; \
+		fi; \
+	done; \
+	if [ "$$rc" -ne 0 ]; then exit 1; fi; \
+	printf "verify.idempotence: OK - registered dry-runs stable\n"
+
+## Assert broken tool overrides fail the scoped doctor before mutation
+verify.doctor-overrides:
+	$(QUIET)rc=0; \
+	for entry in \
+		doctor.network:DOCTOR_TOOL_ip=/no/such/ip \
+		doctor.grub:DOCTOR_TOOL_update_grub=/no/such/update-grub \
+		doctor.package:DOCTOR_TOOL_pkg_manager=/no/such/pkg-manager \
+		doctor.rtdiag:DOCTOR_TOOL_chrt=/no/such/chrt; do \
+		target="$${entry%%:*}"; override="$${entry#*:}"; \
+		if $(MAKE) --no-print-directory "$$target" "$$override" >/dev/null 2>&1; then \
+			printf "verify.doctor-overrides: FAIL - %s accepted broken %s\n" "$$target" "$$override" >&2; rc=1; \
+		else \
+			printf "verify.doctor-overrides: OK   - %s rejects %s\n" "$$target" "$$override"; \
+		fi; \
+	done; \
+	if [ "$$rc" -ne 0 ]; then exit 1; fi; \
+	printf "verify.doctor-overrides: OK - broken tool overrides fail closed\n"
+
+# remove.audit emits a single machine-readable final verdict line
+# (remove.audit: VERDICT=clean | VERDICT=residue). The matcher keys on that
+# verdict, NOT on a substring scan of the whole report - the report header and
+# per-item lines legitimately contain the word "residue", so a substring scan
+# would false-positive on a clean run.
+## Assert remove.audit (M13) reports no residue; skip cleanly until M13 lands
+verify.residue:
+	$(QUIET)if $(MAKE) --no-print-directory -n remove.audit >/dev/null 2>&1; then \
+		verdict="$$($(MAKE) --no-print-directory remove.audit 2>/dev/null | sed -n 's/^remove.audit: VERDICT=//p')"; \
+		case "$$verdict" in \
+			clean)   printf "verify.residue: OK - remove.audit reports no residue\n";; \
+			residue) printf "verify.residue: FAIL - remove.audit reports residue\n" >&2; exit 1;; \
+			*)       printf "verify.residue: FAIL - remove.audit emitted no parseable VERDICT\n" >&2; exit 1;; \
+		esac; \
+	else \
+		printf "verify.residue: SKIP - remove.audit not defined yet (M13 pending)\n"; \
+	fi
+
+## Umbrella regression gate over the harness
+verify.all: verify.reproducibility verify.dryrun verify.idempotence verify.doctor-overrides verify.residue
+	$(QUIET)printf "verify.all: OK - repository-local verification harness passed\n"
+
+VARS_EXCLUDES += VERIFY_DRYRUN VERIFY_ROOT_ONLY_TARGETS VERIFY_ROOT_TARGETS
+VARS_EXCLUDES += VERIFY_GUARDPATH_TARGETS VERIFY_NONROOT_GUARDPATH_TARGETS
+VARS_EXCLUDES += VERIFY_ALL_DRYRUN_TARGETS
+
+-include $(TOP)/configure/RULES_VERIFY.local
