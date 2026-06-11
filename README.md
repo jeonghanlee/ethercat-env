@@ -14,7 +14,7 @@ One should install relevant packages before trying to setup this repository. Aft
  $ apt install -y linux-headers-$(uname -r) build-essential libtool automake tree dkms
  ```
 
-##
+## Quick Start
 
 ```bash
 $ make init
@@ -22,3 +22,27 @@ $ make autoconf
 $ make build
 $ make build.modules
 ```
+
+The full target surface (doctor, profiles, patches, DKMS lifecycle, runtime
+configuration, systemd/udev, RT host policy, removal, verification) is listed
+by `make help` and documented under `docs/`.
+
+## Documentation
+
+| Document | Scope |
+| :--- | :--- |
+| `docs/architecture.md` | System architecture and target graph design |
+| `docs/install.md` | Installation target graph and host state |
+| `docs/operation.md` | Read-only status collection and routine operation |
+| `docs/removal.md` | Removal, rollback, and residue audit |
+| `docs/rt-tuning.md` | Debian 13 real-time host policy |
+| `docs/field-readiness.md` | VM and hardware acceptance evidence model |
+| `docs/milestone.md` | Canonical work register and milestone status |
+
+## Related Repositories
+
+| Repository | Role |
+| :--- | :--- |
+| [ethercat-env-validation](https://github.com/jeonghanlee/ethercat-env-validation) | VM real-execution validation harness and evidence for this repository (R2-12) |
+| [etherlabmaster](https://github.com/jeonghanlee/etherlabmaster) | Historical reference implementation |
+| [realtime-config](https://github.com/jeonghanlee/realtime-config) | Real-time host configuration reference |

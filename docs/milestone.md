@@ -80,6 +80,7 @@ milestone table, status, and external gates.
 | --- | --- | --- |
 | `etherlabmaster` | EtherCAT master operation reference | `git@github.com:jeonghanlee/etherlabmaster.git` |
 | `realtime-config` | Real-time host configuration reference | `git@github.com:jeonghanlee/realtime-config.git` |
+| `ethercat-env-validation` | R2-12 VM real-execution validation harness and evidence | `git@github.com:jeonghanlee/ethercat-env-validation.git` |
 
 These repositories are functional references for this plan. They may be cloned
 again when implementation details need to be compared, but their target names,

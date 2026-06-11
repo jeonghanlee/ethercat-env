@@ -34,7 +34,7 @@ These targets do not replace VM or hardware execution. They establish that the t
 
 ## VM Execution Evidence
 
-The VM validation environment should be a separate validation repository or provisioning workspace, not additional state inside this repository. The VM should be Debian 13 and should run the root-affecting targets in dependency order behind the doctor and guard checks.
+The VM validation environment is a separate validation repository, not additional state inside this repository: [ethercat-env-validation](https://github.com/jeonghanlee/ethercat-env-validation) carries the qemu/KVM driver, the phase scripts, and the recorded evidence sets. The VM is Debian 13 and runs the root-affecting targets in dependency order behind the doctor and guard checks.
 
 Minimum VM evidence:
 
