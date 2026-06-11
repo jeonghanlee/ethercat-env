@@ -112,8 +112,9 @@ remove.rt: doctor.systemd doctor.install
 
 # ---------------------------------------------------------------------------
 # purge - remove configuration and state in addition to files. Distinct from
-# uninstall: it also drops the realtime group, the GRUB backup (if still present),
-# and the repo-local generated artifacts.
+# uninstall: it also drops the realtime group, the EtherCAT device access group
+# (created by udev.install), the GRUB backup (if still present), and the
+# repo-local generated artifacts.
 # ---------------------------------------------------------------------------
 
 # Root-affecting: uninstall + RT revert, then drop residual config/state. Each rm
@@ -126,6 +127,12 @@ remove.purge: doctor.install remove.uninstall remove.rt
 		$(SUDO) groupdel "$(RT_GROUP)"; \
 	else \
 		printf "remove.purge: realtime group %s already absent\n" "$(RT_GROUP)"; \
+	fi
+	$(QUIET)if getent group "$(ECAT_DEV_GROUP)" >/dev/null 2>&1; then \
+		printf "remove.purge: deleting device access group %s\n" "$(ECAT_DEV_GROUP)"; \
+		$(SUDO) groupdel "$(ECAT_DEV_GROUP)"; \
+	else \
+		printf "remove.purge: device access group %s already absent\n" "$(ECAT_DEV_GROUP)"; \
 	fi
 	+$(QUIET)$(call guard-path,$(RT_GRUB_BACKUP),$(RT_GRUB_BACKUP_GUARD),exact)
 	$(SUDO) rm -f "$(RT_GRUB_BACKUP)"
@@ -148,9 +155,11 @@ remove.audit:
 	if [ -e "$(COMMAND_LINK)" ]; then printf "remove.audit: residue - command path %s\n" "$(COMMAND_LINK)"; rc=1; else printf "remove.audit: clean   - command path absent\n"; fi; \
 	if [ -e "$(LOADER_DEST_CONF)" ]; then printf "remove.audit: residue - loader fragment %s\n" "$(LOADER_DEST_CONF)"; rc=1; else printf "remove.audit: clean   - loader fragment absent\n"; fi; \
 	if [ -e "$(RT_LIMITS_FILE)" ]; then printf "remove.audit: residue - RT limits.d %s\n" "$(RT_LIMITS_FILE)"; rc=1; else printf "remove.audit: clean   - RT limits.d absent\n"; fi; \
+	if getent group "$(RT_GROUP)" >/dev/null 2>&1; then printf "remove.audit: residue - realtime group %s\n" "$(RT_GROUP)"; rc=1; else printf "remove.audit: clean   - realtime group absent\n"; fi; \
+	if getent group "$(ECAT_DEV_GROUP)" >/dev/null 2>&1; then printf "remove.audit: residue - device access group %s\n" "$(ECAT_DEV_GROUP)"; rc=1; else printf "remove.audit: clean   - device access group absent\n"; fi; \
 	if [ -e "$(RT_GRUB_BACKUP)" ]; then printf "remove.audit: residue - RT GRUB backup %s\n" "$(RT_GRUB_BACKUP)"; rc=1; else printf "remove.audit: clean   - RT GRUB backup absent\n"; fi; \
 	if grep -q -- "$(RT_GRUB_PARAMS)" "$(RT_GRUB_FILE)" 2>/dev/null; then printf "remove.audit: residue - RT GRUB params still in %s\n" "$(RT_GRUB_FILE)"; rc=1; else printf "remove.audit: clean   - RT GRUB params absent\n"; fi; \
-	if command -v dpkg >/dev/null 2>&1 && dpkg -l "$(RT_KERNEL_PKG)" 2>/dev/null | grep -q '^ii'; then printf "remove.audit: residue - RT kernel package %s still installed (removal is an operator step)\n" "$(RT_KERNEL_PKG)"; rc=1; else printf "remove.audit: clean   - RT kernel package absent\n"; fi; \
+	if command -v dpkg >/dev/null 2>&1 && dpkg -l "$(RT_KERNEL_PKG)" 2>/dev/null | grep -q '^ii'; then printf "remove.audit: note    - RT kernel package %s still installed (operator-managed package state, not counted as residue)\n" "$(RT_KERNEL_PKG)"; else printf "remove.audit: clean   - RT kernel package absent\n"; fi; \
 	if command -v systemctl >/dev/null 2>&1; then \
 		for svc in $(RT_SERVICE_ALLOWLIST); do \
 			if [ "$$(systemctl is-enabled "$$svc" 2>/dev/null)" = "masked" ]; then printf "remove.audit: residue - service %s still masked\n" "$$svc"; rc=1; else printf "remove.audit: clean   - service %s not masked\n" "$$svc"; fi; \

@@ -41,7 +41,7 @@ VERIFY_GUARDPATH_TARGETS ?= \
 	src_install src_uninstall src_version src_version.clean \
 	systemd.install systemd.remove sd_clean \
 	udev.install udev.remove \
-	command.install loader.install \
+	command.install loader.install runtime.install \
 	rt.limits.install rt.grub.apply rt.grub.rollback \
 	remove.uninstall remove.rt remove.purge
 

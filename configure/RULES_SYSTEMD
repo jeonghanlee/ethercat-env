@@ -157,13 +157,23 @@ udev.render:
 		"$(ECAT_UDEV_TEMPLATE)" > "$(ECAT_UDEV_STAGE_RULE)"
 	$(QUIET)printf "udev.render: OK - staged %s\n" "$(ECAT_UDEV_STAGE_RULE)"
 
-# Root-affecting: copies the staged rule into $(ECAT_UDEV_DIR) and reloads udev.
+# Root-affecting: ensures the device access group exists, then copies the staged
+# rule into $(ECAT_UDEV_DIR) and reloads udev. udev resolves GROUP names when the
+# rules are loaded (resolve_names=early): if $(ECAT_DEV_GROUP) does not exist at
+# reload time the GROUP assignment is silently dropped and the device node stays
+# root-owned, so the group must be created BEFORE the rule install and reload.
 # The path-prefix write is wrapped with guard-path; udevadm is gated by
-# doctor.systemd + require-root.
+# doctor.systemd + require-root; groupadd/getent come from doctor.install.
 ## Install the staged udev rule and reload udev (root-affecting)
 udev.install: doctor.systemd doctor.install udev.render
 	$(QUIET)$(call require-root)
 	+$(QUIET)$(call guard-path,$(ECAT_UDEV_DEST_RULE),$(ECAT_UDEV_DIR))
+	$(QUIET)if getent group "$(ECAT_DEV_GROUP)" >/dev/null 2>&1; then \
+		printf "udev.install: group %s already present\n" "$(ECAT_DEV_GROUP)"; \
+	else \
+		printf "udev.install: creating group %s\n" "$(ECAT_DEV_GROUP)"; \
+		$(SUDO) groupadd --system "$(ECAT_DEV_GROUP)"; \
+	fi
 	$(SUDO) install -m 0644 "$(ECAT_UDEV_STAGE_RULE)" "$(ECAT_UDEV_DEST_RULE)"
 	$(SUDO) udevadm control --reload-rules
 	$(QUIET)printf "udev.install: OK - installed %s\n" "$(ECAT_UDEV_DEST_RULE)"

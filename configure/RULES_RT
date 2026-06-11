@@ -67,6 +67,9 @@ rt.kernel.select:
 # limits.d policy file. The policy file write is a PATH PREFIX write wrapped with
 # guard-path; group creation runs through $(SUDO). Idempotent: an existing group
 # is left as-is, and the policy body is re-rendered to the same content.
+# RT_LIMITS_RULES is pipe-separated and must reach the shell single-quoted: a
+# raw $(RT_LIMITS_RULES) expansion lets the shell parse | as a pipe before IFS
+# splitting ever applies.
 ## Create the realtime group and install the limits.d RT policy (root-affecting)
 rt.limits.install: doctor.install
 	$(QUIET)$(call require-root)
@@ -79,9 +82,12 @@ rt.limits.install: doctor.install
 	fi
 	$(QUIET)tmp="$$(mktemp)"; \
 	printf "# Installed by ethercat-env rt.limits.install (M11). Do not edit by hand.\n" > "$$tmp"; \
-	IFS='|'; for rule in $(RT_LIMITS_RULES); do \
+	rules='$(RT_LIMITS_RULES)'; \
+	set -f; IFS='|'; \
+	for rule in $$rules; do \
 		printf "%s\n" "$$rule" >> "$$tmp"; \
 	done; \
+	set +f; unset IFS; \
 	$(SUDO) install -m 0644 "$$tmp" "$(RT_LIMITS_FILE)"; \
 	rm -f "$$tmp"; \
 	printf "rt.limits.install: OK - wrote %s\n" "$(RT_LIMITS_FILE)"

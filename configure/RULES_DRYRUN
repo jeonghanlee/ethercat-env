@@ -23,7 +23,7 @@ targets:
 	$(info build     : build build.install build.uninstall build.modules )
 	$(info module    : dkms.conf module.lifecycle build.dkms add.dkms install.dkms )
 	$(info install   : install src_install src_version )
-	$(info runtime   : runtime.generate runtime.lint runtime.config.show runtime.status )
+	$(info runtime   : runtime.generate runtime.lint runtime.install runtime.config.show runtime.status )
 	$(info iface     : iface.status iface.prepare iface.unprepare )
 	$(info systemd   : systemd.render systemd.install systemd.enable systemd.start )
 	$(info systemd   : systemd.stop systemd.disable systemd.remove sd_stop sd_disable sd_clean )

@@ -52,6 +52,9 @@ RT_LIMITS_FILE    ?= $(RT_LIMITS_DIR)/$(RT_LIMITS_NAME)
 RT_LIMITS_RULE_1  ?= @$(RT_GROUP)   -   rtprio   99
 RT_LIMITS_RULE_2  ?= @$(RT_GROUP)   -   memlock  unlimited
 RT_LIMITS_RULE_3  ?= @$(RT_GROUP)   -   nice     -20
+# Pipe-separated list consumed by rt.limits.install. Site overrides must not
+# contain single quotes: the recipe carries the list single-quoted into the
+# shell, so an embedded quote fails the assignment closed.
 RT_LIMITS_RULES   ?= $(RT_LIMITS_RULE_1)|$(RT_LIMITS_RULE_2)|$(RT_LIMITS_RULE_3)
 
 # ---------------------------------------------------------------------------

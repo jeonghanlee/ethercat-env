@@ -12,9 +12,20 @@ PACKAGE_NAME="@MODULE_NAME@"
 PACKAGE_VERSION="@MODULE_VERSION@"
 
 # Build the modules out of the upstream tree. autoreconf + configure run during
-# `make autoconf`; DKMS invokes the kernel module build for the running kernel.
-MAKE[0]="make modules KDIR=/lib/modules/${kernelver}/build"
-CLEAN="make clean"
+# `make autoconf`; DKMS builds for the TARGET kernel ${kernelver}, which on a
+# kernel update differs from the running kernel. The upstream top-level
+# Makefile bakes two paths in at configure time and both must be forced as
+# make command-line overrides:
+#   - LINUX_SOURCE_DIR: Kbuild -C kernel tree; ignores KDIR, so without the
+#     override every DKMS build reuses the configure-time kernel headers and
+#     the module fails to load (module_layout mismatch) on the new kernel.
+#   - abs_builddir: Kbuild M= module output dir; without the override the
+#     build escapes into the configure-time checkout and DKMS then installs
+#     the stale .ko copied into its build tree instead of the fresh one.
+# The abs_builddir literal assumes the default dkms tree /var/lib/dkms; a
+# relocated dkms_tree re-opens the build escape and needs a regenerated conf.
+MAKE[0]="make modules LINUX_SOURCE_DIR=/lib/modules/${kernelver}/build abs_builddir=/var/lib/dkms/@MODULE_NAME@/@MODULE_VERSION@/build"
+CLEAN="make clean LINUX_SOURCE_DIR=/lib/modules/${kernelver}/build abs_builddir=/var/lib/dkms/@MODULE_NAME@/@MODULE_VERSION@/build"
 
 # Built module set. Index 0 is the always-present master module; the device
 # driver entries below are emitted by `make dkms.conf` for each enabled profile.

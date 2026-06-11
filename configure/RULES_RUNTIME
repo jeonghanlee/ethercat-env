@@ -1,9 +1,10 @@
-# RULES_RUNTIME - runtime ethercat.conf generator, lint, and NIC status (M9).
+# RULES_RUNTIME - runtime ethercat.conf generator, lint, install, NIC status (M9).
 #
 # runtime.generate renders templates/ethercat.conf.in into a REPOSITORY-LOCAL
-# output path. It never writes to /etc/ethercat.conf; installation into /etc is
-# an M10 root-affecting concern, kept out of this file. Generation, lint, config
-# show, and iface.status are all non-root.
+# output path. Generation, lint, config show, and iface.status are all non-root.
+# runtime.install is the single root-affecting copy step: it installs the
+# rendered config into the prefix etc path that ethercatctl reads, replacing the
+# upstream default that build.install lands there.
 #
 # iface.prepare is the root-affecting NIC up/down target. It is wired to require
 # doctor + require-root and is declared here, but its actual execution belongs to
@@ -15,13 +16,19 @@
 #   configure/ethercatmaster.conf : ETHERCAT_MASTER0 (master interface name)
 #   selected profile (WITH_DEV_*)  : enabled drivers -> DEVICE_MODULES
 #   -> templates/ethercat.conf.in  -> $(RUNTIME_OUTPUT)  (repo-local)
+#   -> (runtime.install) $(RUNTIME_DEST_CONF)  (root-affecting)
 
-.PHONY: runtime.generate runtime.lint runtime.config.show iface.status iface.prepare iface.unprepare
+.PHONY: runtime.generate runtime.lint runtime.install runtime.config.show iface.status iface.prepare iface.unprepare
 
 # Repo-local render target. NEVER /etc. Overridable via RULES_RUNTIME.local.
 RUNTIME_TEMPLATE ?= $(TOP)/templates/ethercat.conf.in
 RUNTIME_BUILD    ?= $(TOP)/build
 RUNTIME_OUTPUT   ?= $(RUNTIME_BUILD)/ethercat.conf
+
+# Installed runtime config consumed by ethercatctl (upstream sysconfdir layout:
+# build.install configures the upstream tree with sysconfdir under the prefix).
+RUNTIME_DEST_DIR  ?= $(INSTALL_LOCATION)/etc
+RUNTIME_DEST_CONF ?= $(RUNTIME_DEST_DIR)/ethercat.conf
 
 # Resolved master interface name, quotes stripped from ETHERCAT_MASTER0.
 RUNTIME_MASTER0  := $(patsubst "%",%,$(ETHERCAT_MASTER0))
@@ -68,8 +75,10 @@ runtime.generate:
 		"$(RUNTIME_TEMPLATE)" > "$(RUNTIME_OUTPUT)"
 	$(QUIET)printf "runtime.generate: OK - wrote %s\n" "$(RUNTIME_OUTPUT)"
 
+# runtime.lint regenerates first: the dependency keeps generate -> lint ordered
+# even under parallel make (runtime.install lists both as prerequisites).
 ## Validate the generated config: required keys present and non-empty master
-runtime.lint:
+runtime.lint: runtime.generate
 	$(QUIET)out="$(RUNTIME_OUTPUT)"; \
 	if [ ! -f "$$out" ]; then \
 		printf "runtime.lint: FAIL - generated config not found: %s (run runtime.generate)\n" "$$out" >&2; exit 1; \
@@ -88,6 +97,17 @@ runtime.lint:
 		printf "runtime.lint: FAIL -%s\n" "$$fail" >&2; exit 1; \
 	fi; \
 	printf "runtime.lint: OK - required keys present, master device=%s\n" "$$master"
+
+# Root-affecting: installs the rendered and linted config into the prefix etc
+# path. Without this step ethercatctl keeps reading the upstream default config
+# (empty MASTER0_DEVICE) that build.install placed there, and the master starts
+# with no device. The write is wrapped with guard-path under the install prefix.
+## Install the generated ethercat.conf into the prefix etc path (root-affecting)
+runtime.install: doctor.install runtime.generate runtime.lint
+	$(QUIET)$(call require-root)
+	+$(QUIET)$(call guard-path,$(RUNTIME_DEST_CONF),$(INSTALL_LOCATION))
+	$(SUDO) install -m 0644 "$(RUNTIME_OUTPUT)" "$(RUNTIME_DEST_CONF)"
+	$(QUIET)printf "runtime.install: OK - installed %s\n" "$(RUNTIME_DEST_CONF)"
 
 ## Print the generated ethercat.conf (read-only)
 runtime.config.show:

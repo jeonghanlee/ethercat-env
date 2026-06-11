@@ -40,17 +40,17 @@ The prefix-tree removal path is `src_uninstall`. It depends on the systemd clean
 | RT limits policy | Remove the configured limits.d policy file. |
 | Service allowlist | Unmask each service named in `RT_SERVICE_ALLOWLIST`. |
 
-The RT kernel package itself is treated as an operator-managed package state. `remove.audit` reports it if still installed, but package removal is not folded into the destructive repository target graph.
+The RT kernel package itself is treated as an operator-managed package state. `remove.audit` reports it as a note if still installed, without counting it as residue; package removal is not folded into the destructive repository target graph.
 
 ## Purge Behavior
 
-`remove.purge` runs uninstall and RT removal first, then removes additional state such as the realtime group and remaining GRUB backup file. It remains guarded and root-affecting.
+`remove.purge` runs uninstall and RT removal first, then removes additional state: the realtime group, the EtherCAT device access group created by `udev.install`, and the remaining GRUB backup file. It remains guarded and root-affecting.
 
 Use `remove.purge` only when the host should no longer carry the repository-managed EtherCAT or RT policy state.
 
 ## Residue Report
 
-`remove.audit` checks the prefix tree, systemd unit, udev rule, command path, loader fragment, RT limits file, GRUB backup, RT GRUB parameters, RT kernel package, and masked service allowlist.
+`remove.audit` checks the prefix tree, systemd unit, udev rule, command path, loader fragment, RT limits file, realtime and device access groups, GRUB backup, RT GRUB parameters, RT kernel package, and masked service allowlist.
 
 The final line is `VERDICT=clean` or `VERDICT=residue`. The verification harness consumes this verdict through `verify.residue`.
 

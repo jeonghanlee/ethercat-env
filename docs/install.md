@@ -55,14 +55,15 @@ make install
 
 ## Runtime Configuration Staging
 
-Runtime configuration is generated to `build/ethercat.conf`.
+Runtime configuration is generated to `build/ethercat.conf`, validated, and installed into the prefix configuration path that `ethercatctl` reads.
 
 ```bash
 make runtime.generate
 make runtime.lint
+make runtime.install
 ```
 
-The generated file contains the master interface, optional backup interface, selected device modules, and interface up/down list. This repository stage does not write `/etc/ethercat.conf` directly.
+The generated file contains the master interface, optional backup interface, selected device modules, and interface up/down list. `runtime.generate` and `runtime.lint` are non-root and repository-local. `runtime.install` is root-affecting: it installs the linted config to `/opt/ethercat/etc/ethercat.conf`, replacing the upstream default that `build.install` places there (the upstream default carries an empty `MASTER0_DEVICE`, so without this step the service starts no master). This repository never writes `/etc/ethercat.conf`.
 
 ## systemd, udev, Command, And Loader Integration
 
@@ -78,7 +79,9 @@ make loader.render
 make loader.install
 ```
 
-`systemd.install` copies the rendered unit to the system unit directory and reloads systemd. `udev.install` copies the rendered udev rule and reloads rules. `command.install` creates the command symlink. `loader.install` installs the loader fragment and runs `ldconfig`.
+`systemd.install` copies the rendered unit to the system unit directory and reloads systemd. `udev.install` first creates the device access group (`ethercat` by default) when absent - udev resolves `GROUP` names at rule load time, so the group must exist before the reload - then copies the rendered udev rule and reloads rules. `command.install` creates the command symlink. `loader.install` installs the loader fragment and runs `ldconfig`.
+
+An operator account that runs the `ethercat` tool without root must be a member of the device access group; membership takes effect at the next login session.
 
 ## Start And Enable
 

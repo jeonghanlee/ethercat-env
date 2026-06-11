@@ -36,13 +36,14 @@ runtime readiness checks, and field deployment prerequisites for Debian 13.
 
 ## Canonical Work Register
 
-Next session entry point: begin R2-12 Debian 13 VM real-execution validation.
-Revision 1 M1 through M15 are code-complete and repository-local verified on
-branch `dev/milestone-buildout`. Revision 2 R2-1 through R2-11 are
-repository-local implemented and verified. Guard, doctor, DKMS, runtime-status,
-removal-flow, ASCII-output, documentation, and verification-harness gaps are
-closed before VM real-execution validation. No host state was intentionally
-mutated and no hardware test has run yet.
+Next session entry point: merge `dev/milestone-buildout` to master, then start
+the successor environment buildout. Revision 1 M1 through M15 and Revision 2
+R2-1 through R2-12 are closed. R2-12 was validated by real execution on a
+Debian 13 VM (validation repository `ethercat-env-validation`); five defects
+were found by live execution and fixed (see R2-12 Findings). R2-13 and M16
+remain external hardware gates pending a real adapter and slave chain. No
+state was mutated on this development host; all root-affecting execution ran
+inside the disposable VM.
 
 This file is the repository source of truth for milestone status. Agent memory
 may keep clone hints for reference repositories, but milestone status and
@@ -56,7 +57,7 @@ milestone table, status, and external gates.
 | Revision | Scope | Status |
 | --- | --- | --- |
 | Revision 1 | Initial Debian 13 EtherCAT and RT target graph buildout, M1 through M16. | M1-M15 code-complete and repository-local verified; M16 blocked by external validation. |
-| Revision 2 | Round 2 hardening after full-code review of Revision 1. | R2-1 through R2-11 implemented and repository-local verified; R2-12 and R2-13 remain external gates. |
+| Revision 2 | Round 2 hardening after full-code review of Revision 1. | R2-1 through R2-12 closed; R2-12 VM real-execution validated with five live-execution defects fixed; R2-13 remains an external hardware gate. |
 
 ## Current Baseline
 
@@ -65,7 +66,7 @@ milestone table, status, and external gates.
 | Upstream source | `https://gitlab.com/etherlab.org/ethercat` |
 | Source reference | `stable-1.6` |
 | Observed upstream revision | `1.6.9-4-g46cc20e6` |
-| Source reproducibility | Not closed; `stable-1.6` is a moving branch and needs a pinned revision or verify-on-checkout policy |
+| Source reproducibility | Closed; `configure/RELEASE` pins `SRC_HASH` and `src.verify` fails closed on mismatch (VM-verified under real execution) |
 | Host baseline | Debian 13.5, kernel `6.12.88+deb13-amd64` |
 | Verified wrapper targets | `make init`, `make autoconf`, `make build`, `make build.modules` |
 | Dry-run-verified target surface | Full M1-M14 target graph (`doctor`, `profile.*`, `patch.*`, `src.verify`, `runtime.*`, `systemd.*`, `udev.*`, `rt.*`, `rtdiag.*`, `remove.*`, `verify.*`) resolves under `make --dry-run`; read-only targets run; no host mutation, no hardware test |
@@ -234,8 +235,33 @@ VM or hardware execution.
 | Hygiene | R2-9 ASCII cleanup for code and generated output | Milestone | Implemented (repo-local; verified) | R2-1 through R2-8 | `rg -nP "[^\\x00-\\x7F]" Makefile configure templates patch examples README.md .gitignore` reports no matches after template regeneration. |
 | Documentation | R2-10 Documentation and acceptance refresh | Milestone | Implemented (repo-local; verified) | R2-1 through R2-9 | This register, `docs/dev-plan-buildout.md`, and `docs/parity-matrix.md` record Revision 2 scope, guard semantics, doctor scopes, DKMS consistency, runtime status, removal flow, and verification evidence. |
 | Regression | R2-11 Repository-local regression pass | Milestone | Implemented (repo-local; verified) | R2-10 | `make verify.all`, `make profile.matrix`, `make patch.status`, `make runtime.status`, `make rt.status`, and `make remove.audit` passed without intended host mutation. |
-| VM validation | R2-12 Debian 13 VM real-execution validation | External gate | Blocked | R2-11 | In a separate VM validation repository, execute install, module, systemd, udev, GRUB, service-policy, and removal targets for real and record evidence. |
+| VM validation | R2-12 Debian 13 VM real-execution validation | External gate | Closed (VM real-execution validated) | R2-11 | Validation repository `ethercat-env-validation` executed the full root-affecting graph on a Debian 13 VM: build from pinned revision, prefix install, DKMS lifecycle, runtime config install, systemd/udev, RT kernel and policy, PREEMPT_RT reboot service persistence, cross-kernel DKMS rebuild with matching vermagic, and removal ending in `VERDICT=clean`. Five live-execution defects found and fixed (see R2-12 Findings). Hardware cold boot remains in R2-13/M16. |
 | Field validation | R2-13 Hardware, reboot, and production validation | External gate | Blocked | R2-12, Revision 1 M16 | Confirm real adapter, slave chain, reboot persistence, kernel-update rebuild, unload/reload, RT readiness, and production approval on target hardware. |
+
+## R2-12 Findings
+
+Live VM execution found five defects that dry-run verification structurally
+could not catch. All five are fixed and re-validated by a full clean
+acceptance run (phases p1 through p9 pass first-try on a fresh VM). The
+original failure signatures of F1 and F4 were observed live during the
+discovery run and are recorded in this table; the preserved discovery logs
+are post-fix re-runs of the same phases, and the acceptance set is the
+authoritative validation evidence.
+
+| Finding | Defect | Fix |
+| --- | --- | --- |
+| F1 | `rt.limits.install` aborted with a shell syntax error: the pipe-separated `RT_LIMITS_RULES` expanded raw into the recipe shell, which parsed `\|` as a pipe operator before IFS splitting could apply. | `configure/RULES_RT`: pass the rule list single-quoted into a shell variable, split under `set -f` with `IFS='\|'`. |
+| F2 | `/dev/EtherCAT0` stayed root-owned: udev resolves `GROUP` names at rule load time (`resolve_names=early`), and no target created the `ethercat` group, so the GROUP assignment was silently dropped. | `configure/RULES_SYSTEMD`: `udev.install` idempotently creates the system group before installing and reloading the rule; `configure/RULES_REMOVE`: `remove.purge` deletes the group and `remove.audit` checks both groups. |
+| F3 | No target installed the rendered `ethercat.conf`; `ethercatctl` kept reading the upstream default (empty `MASTER0_DEVICE`) placed by `build.install`, so the service started no master. | `configure/RULES_RUNTIME`: new root-affecting `runtime.install` (doctor, require-root, guard-path) registered in `RULES_VERIFY` and the target listing; `docs/install.md` updated. |
+| F4 | DKMS built every module against the configure-time kernel: the upstream Makefile ignores `KDIR` (uses baked `LINUX_SOURCE_DIR`) and bakes `abs_builddir`, so kernel-update builds escaped the DKMS build tree and DKMS installed the stale copied `.ko` (`module_layout` mismatch, `Exec format error` on the PREEMPT_RT boot). | `templates/dkms.conf.in`: force both `LINUX_SOURCE_DIR=/lib/modules/$kernelver/build` and `abs_builddir=/var/lib/dkms/<module>/<version>/build` as make command-line overrides in `MAKE[0]` and `CLEAN`. Cross-kernel rebuild now produces matching vermagic for a kernel that is not running. |
+| F5 | `remove.audit` counted the operator-managed RT kernel package as residue, so `verify.residue` could never pass after RT provisioning, contradicting the documented removal scope. | `configure/RULES_REMOVE`: report the package as a note outside the verdict; `docs/removal.md` aligned. |
+
+Observation recorded for D2: installing `linux-image-rt-amd64` makes GRUB
+select the RT kernel as the boot default through version ordering even though
+no target writes `GRUB_DEFAULT`; the VM reboot therefore ran PREEMPT_RT.
+D2 wording (kernel selection is explicit, post-reboot confirmation is M16)
+still holds, but operators should expect the RT kernel to win the default
+menu entry once installed.
 
 ## Profile Policy
 
@@ -303,19 +329,17 @@ document unless it is needed to prove host readiness on real hardware.
 
 ## Next Session Entry Point
 
-Revision 1 M1 through M15 and Revision 2 R2-1 through R2-11 are code-complete
-and repository-local verified on branch `dev/milestone-buildout`. The target
-graph was checked with dry-run and read-only targets only; no host state was
-intentionally mutated and no hardware test has run yet, so none of these
-milestones are hardware-verified.
+Revision 1 M1 through M15 and Revision 2 R2-1 through R2-12 are closed on
+branch `dev/milestone-buildout`. R2-12 was validated by real execution on a
+disposable Debian 13 VM driven from the local validation repository
+`ethercat-env-validation` (qemu/KVM, cloud image, phase scripts p1 through
+p9, evidence logs per phase). The acceptance run passes every phase first-try
+after the five R2-12 findings were fixed; the discovery and acceptance
+evidence sets are preserved in that repository.
 
-The next step is R2-12 VM-based real-execution validation, built as a separate
-validation repository (the ioc-runner / ansible-provision pattern, not inside
-this repo): cloud-provision a Debian 13 VM and run the root-affecting install,
-module, systemd, udev, GRUB, service policy, and removal targets for real, in
-dependency order behind the doctor and destructive-target guards. After real
-execution holds on a VM, move to R2-13 / M16 hardware gates (real adapter, slave
-chain, reboot persistence, kernel update behavior, unload/reload, and RT
-readiness on target hardware). Documentation is complete for repository-local
-behavior and can be revised after VM or hardware evidence changes the operating
-contract.
+The next step is to merge `dev/milestone-buildout` to master as the closure
+baseline of this buildout, then begin the successor environment work. R2-13
+and M16 remain external hardware gates (real adapter, slave chain, hardware
+reboot persistence, unload/reload, RT readiness, production approval) and
+inherit unchanged into whatever follows; they cannot close without target
+hardware.
