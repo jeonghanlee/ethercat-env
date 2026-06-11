@@ -36,14 +36,18 @@ runtime readiness checks, and field deployment prerequisites for Debian 13.
 
 ## Canonical Work Register
 
-Next session entry point: merge `dev/milestone-buildout` to master, then start
-the successor environment buildout. Revision 1 M1 through M15 and Revision 2
-R2-1 through R2-12 are closed. R2-12 was validated by real execution on a
-Debian 13 VM (validation repository `ethercat-env-validation`); five defects
-were found by live execution and fixed (see R2-12 Findings). R2-13 and M16
-remain external hardware gates pending a real adapter and slave chain. No
-state was mutated on this development host; all root-affecting execution ran
-inside the disposable VM.
+Next session entry point: start the successor environment buildout - Debian
+packaging of the upstream master plus Ansible host-configuration roles, with
+the repository structure decision pending. `dev/milestone-buildout` is merged
+to master (`1f40451`) and both repositories are pushed. Revision 1 M1 through
+M15 and Revision 2 R2-1 through R2-12 are closed; R2-12 was validated by real
+execution on a Debian 13 VM (validation repository `ethercat-env-validation`)
+with five live-execution defects found and fixed (see R2-12 Findings). R2-13
+and M16 remain external hardware gates pending a real adapter and slave chain.
+The earlier partial VM harness in the `cloud-provision` and
+`ansible-provision` repositories is retired as superseded by
+`ethercat-env-validation`; its removal is follow-up work in those
+repositories.
 
 This file is the repository source of truth for milestone status. Agent memory
 may keep clone hints for reference repositories, but milestone status and
@@ -338,9 +342,14 @@ p9, evidence logs per phase). The acceptance run passes every phase first-try
 after the five R2-12 findings were fixed; the discovery and acceptance
 evidence sets are preserved in that repository.
 
-The next step is to merge `dev/milestone-buildout` to master as the closure
-baseline of this buildout, then begin the successor environment work. R2-13
-and M16 remain external hardware gates (real adapter, slave chain, hardware
-reboot persistence, unload/reload, RT readiness, production approval) and
-inherit unchanged into whatever follows; they cannot close without target
-hardware.
+The merge to master is complete (`1f40451`) and both repositories are pushed.
+The next step is the successor environment buildout: Debian packaging of the
+upstream master (the R2-12 finding F4 DKMS knowledge feeds the packaging) plus
+Ansible host-configuration roles, with the `ethercat-env-validation` phase
+harness reused as the acceptance gate; the repository structure decision is
+pending. R2-13 and M16 remain external hardware gates (real adapter, slave
+chain, hardware reboot persistence, unload/reload, RT readiness, production
+approval) and inherit unchanged into whatever follows; they cannot close
+without target hardware. The earlier partial VM harness in the
+`cloud-provision` and `ansible-provision` repositories is retired as
+superseded by `ethercat-env-validation`.
