@@ -42,7 +42,7 @@ adding package-install and Ansible-provisioning phases.
 | M2 Debian source package baseline | M2.T1: source package builds from the pinned upstream revision on Debian 13; orig source matches the `SRC_HASH` policy. | M2.T2: package build check joins the verification graph. |
 | M3 DKMS module package | M3.T1: package install reports installed DKMS state for all enabled modules; cross-kernel build for a non-running kernel produces matching vermagic (F4 regression). | M3.T2: cross-kernel rebuild case recorded as a permanent regression check. |
 | M4 Userspace tools package | M4.T1: `ethercat` command resolves on PATH, shared libraries resolve via the loader, uninstall leaves no residue. | None. |
-| M5 Host integration packaging | M5.T1: maintainer scripts create the `ethercat` group idempotently (F2), `ethercat.conf` is preserved as a conffile (F3), service and udev states report correctly, purge removes the group and audits clean (F5 semantics). M5.T3: re-run M3.T1 and M4.T1 per the dependency matrix. | M5.T2: install and purge residue checks join the verification graph. |
+| M5 Host integration packaging | M5.T1 (amended 2026-06-12, M1): the `ethercat` group is sysusers.d-declared and exists before udev rule load (F2); no `/etc/ethercat.conf` is shipped - the reference default lives outside /etc and the unit fails closed when the config is absent (F3); the unit path brings the configured UPDOWN interfaces up at service start (EC-8); service and udev states report correctly; purge retains system groups and audits report them as notes, ending clean (F5 semantics). M5.T3: re-run M3.T1 and M4.T1 per the dependency matrix. | M5.T2: install and purge residue checks join the verification graph. |
 | M6 Ansible role: RT host configuration | M6.T1: role applies on a clean host, a second run reports zero changes, check-mode predicts the apply, outcomes match `rt.status` expectations. | M6.T2: ansible-lint joins the verification graph. |
 | M7 Ansible role: EtherCAT master host | M7.T1: role installs the cycle packages, deploys the runtime configuration with a bound master device (F3 regression), and reaches an active service. M7.T3: re-run M6.T1 per the dependency matrix. | None. |
 | M8 Repository-local verification | M8.T1: extended `verify.all` passes with lintian, ansible-lint, and check-mode wired in. | M8.T2: the wiring itself is the permanent suite addition. |
@@ -74,4 +74,11 @@ release) follows the git-workflow release reference.
 
 ## Added During Cycle
 
-None yet. Entries carry the date and the milestone that surfaced the case.
+- 2026-06-12 (M1): M5.T1 amended per the U3/U4 delivery-model decisions
+  (`docs/delivery-model.md`). Configuration ownership is role-exclusive -
+  the conffile-preservation clause is replaced by no-/etc-file shipping,
+  a reference default outside /etc, and a fail-closed unit (F3).
+  Group lifecycle moves to sysusers.d; purge retains system groups and
+  audits report them as notes (F2/F5). M5.T1 also gains the EC-8
+  boot-time interface bring-up check (cross-check finding RV1-R2-F2).
+  Issue #5 body requires the same amendment before M5 executes.

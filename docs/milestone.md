@@ -36,13 +36,15 @@ runtime readiness checks, and field deployment prerequisites for Debian 13.
 
 ## Canonical Work Register
 
-Next session entry point: Release 1.0.0 cycle M1 (successor delivery model
-and parity map, issue #1) on branch `dev/release-1.0.0`. The cycle work
-order and verification subs are in the Release 1.0.0 Cycle section below;
-procedures are in `docs/testplan_1.0.0.md`. Work-unit sync is complete:
-milestones M1 through M10 are issues #1 through #10 under GitHub milestone
-1.0.0. Pending cycle-open step: the planning commit. R2-13 and Revision 1
-M16 remain external hardware gates and inherit into the cycle unchanged.
+Next session entry point: Release 1.0.0 cycle M2 (Debian source package
+baseline, issue #2) on branch `dev/release-1.0.0`. M1 is closed
+(2026-06-12, issue #1, `docs/delivery-model.md`). The cycle work order and
+verification subs are in the Release 1.0.0 Cycle section below; procedures
+are in `docs/testplan_1.0.0.md`. Milestones M1 through M10 are issues #1
+through #10 under GitHub milestone 1.0.0. M2 entry verification: confirm
+whether the pinned upstream revision ships its own debian/ directory.
+R2-13 and Revision 1 M16 remain external hardware gates and inherit into
+the cycle unchanged.
 
 The Release 1.0.0 cycle runs remote-authoritative: each milestone issue
 carries its verification checkbox list as the status source of truth and
@@ -287,10 +289,18 @@ The cycle plan is `docs/testplan_1.0.0.md`; the standing acceptance vehicle
 is the `ethercat-env-validation` phase harness. Procedures live in the plan;
 this table tracks status only.
 
+M1 delivery-model decisions (2026-06-12, `docs/delivery-model.md`): package
+set `ethercat-dkms`, `ethercat-tools`, `ethercat-host` from source package
+`ethercat`; role set `rt_host`, `ethercat_master`. Configuration ownership
+is role-exclusive - no packaged `/etc/ethercat.conf`, reference default
+outside /etc, fail-closed unit (WireGuard-class precedent). The `ethercat`
+group is sysusers.d-managed; purge retains system groups and audits report
+them as notes (F5 precedent).
+
 | Topic | Work unit | Type | Status | Depends on | Evidence |
 | --- | --- | --- | --- | --- | --- |
-| Planning | M1 Successor delivery model and parity map | Milestone | Not started | None | Issue #1. |
-| | M1.T1 Parity map completeness review | Verification sub | Not started | M1 | |
+| Planning | M1 Successor delivery model and parity map | Milestone | Closed (2026-06-12) | None | Issue #1 closed. `docs/delivery-model.md`; cross-check ACCEPT by both reviewers (session rs20260611_235423). |
+| | M1.T1 Parity map completeness review | Verification sub | Done | M1 | 118-target sweep, zero unmapped; both reviewers re-verified independently. |
 | Packaging | M2 Debian source package baseline | Milestone | Not started | M1 | Issue #2. |
 | | M2.T1 Pinned-revision source package build on Debian 13 | Verification sub | Not started | M2 | |
 | | M2.T2 Package build check joins the verification graph | Verification sub | Not started | M2 | |
@@ -300,7 +310,7 @@ this table tracks status only.
 | Packaging | M4 Userspace tools package | Milestone | Not started | M2 | Issue #4. |
 | | M4.T1 Command path, loader resolution, uninstall residue | Verification sub | Not started | M4 | |
 | Packaging | M5 Host integration packaging | Milestone | Not started | M3, M4 | Issue #5. |
-| | M5.T1 Group creation (F2), conffile handling (F3), purge audit (F5) | Verification sub | Not started | M5 | |
+| | M5.T1 Group creation (F2), config ownership (F3), purge audit (F5) | Verification sub | Not started | M5 | |
 | | M5.T2 Install and purge residue checks join the verification graph | Verification sub | Not started | M5 | |
 | | M5.T3 Re-run M3.T1 and M4.T1 per the dependency matrix | Verification sub | Not started | M5 | |
 | Ansible | M6 Ansible role: RT host configuration | Milestone | Not started | M1 | Issue #6. |
@@ -323,7 +333,8 @@ this table tracks status only.
 | | M11.T3 Standing plan executed with M9.T4 amendments | Verification sub | Not started | M11 | |
 
 Tally: 11 milestones (10 issue-tracked, 1 register-local gate) and 21
-verification subs; 0 closed. Entry point: M1.
+verification subs; closed: 1 milestone (M1), 1 sub (M1.T1). Entry point:
+M2.
 
 ## Profile Policy
 
@@ -398,9 +409,12 @@ finding F4 DKMS knowledge feeds the packaging) plus Ansible
 host-configuration roles, acceptance-gated by the `ethercat-env-validation`
 phase harness. The work order M1 through M11 with verification subs is in
 the Release 1.0.0 Cycle section; procedures are in `docs/testplan_1.0.0.md`.
-Work-unit sync is complete: milestones M1 through M10 are issues #1 through
-#10 under GitHub milestone 1.0.0. Pending cycle-open step: the planning
-commit.
+Milestones M1 through M10 are issues #1 through #10 under GitHub milestone
+1.0.0. M1 is closed (2026-06-12, issue #1): `docs/delivery-model.md`
+records the package set, role set, configuration ownership (U3), and group
+lifecycle (U4) decisions. Next: M2 (issue #2), whose entry verification
+confirms whether the pinned upstream revision ships its own debian/
+directory.
 
 R2-13 and Revision 1 M16 remain external hardware gates (real adapter, slave
 chain, hardware reboot persistence, unload/reload, RT readiness, production
