@@ -32,11 +32,18 @@ init: clone update src.verify
 
 # gitclone use '-C' option, so git version should be more than 1.8.5. CentOS7 git is imcompatiable.
 #
+# Repository-owned HTTPS pin: a longest-prefix identity insteadOf keeps the
+# upstream URL on HTTPS even when a global gitconfig rewrites gitlab.com to
+# SSH. When several insteadOf patterns match, git applies the longest one,
+# so this rule wins over a broader https://gitlab.com/ -> SSH rewrite while
+# leaving every other gitlab.com URL under the host policy.
+GIT_HTTPS_PIN:=-c url.$(SRC_URL)/.insteadOf=$(SRC_URL)/
+
 clone:
-	$(call gitclone,$(SRC_GITURL),$(SRC_PATH),$(SRC_TAG))
+	$(call gitclone,$(SRC_GITURL),$(SRC_PATH),$(SRC_TAG),$(GIT_HTTPS_PIN))
 
 update:
-	$(QUIET)cd $(SRC_PATH) && git submodule update --init ./
+	$(QUIET)cd $(SRC_PATH) && git $(GIT_HTTPS_PIN) submodule update --init ./
 
 ## Verify the checked-out revision matches the pinned SRC_HASH (fail-closed)
 src.verify:

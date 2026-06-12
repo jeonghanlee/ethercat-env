@@ -21,7 +21,7 @@ make init
 make build.baseline
 ```
 
-`make init` clones or updates `ethercat-src` and verifies the pinned source revision. `make build.baseline` verifies the source revision again, runs autoconf, builds userspace, and builds kernel modules without installing them.
+`make init` clones or updates `ethercat-src` and verifies the pinned source revision. The clone and submodule paths carry a repository-owned HTTPS pin (a longest-prefix identity insteadOf), so `make init` stays on HTTPS even on hosts whose global gitconfig rewrites gitlab.com URLs to SSH. `make build.baseline` verifies the source revision again, runs autoconf, builds userspace, and builds kernel modules without installing them.
 
 The upstream userspace install wrapper is `make build.install`. It is distinct from the guarded prefix metadata target named `make install`. VM validation must confirm the live behavior of this upstream install path before hardware validation.
 

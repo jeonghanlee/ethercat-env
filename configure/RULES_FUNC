@@ -99,8 +99,10 @@ endef
 
 GIT_VERSION:=$(lastword $(shell git --version))
 
+# gitclone URL PATH TAG [GITFLAGS]
+# $(4) carries optional git flags (for example a -c url pin) ahead of clone.
 define gitclone
-$(if $(wildcard $(2)), @echo "Directory $(2) exist. Please remove it first.", git clone  $(1) $(2); git -C $(2) checkout $(3))
+$(if $(wildcard $(2)), @echo "Directory $(2) exist. Please remove it first.", git $(4) clone  $(1) $(2); git -C $(2) checkout $(3))
 endef
 
 define distclean
