@@ -13,3 +13,5 @@ review_sessions/
 build/
 .versions
 work/
+packaging/
+debian/patches/

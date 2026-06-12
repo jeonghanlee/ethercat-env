@@ -1,0 +1,11 @@
+#!/usr/bin/make -f
+# debian/rules for the ethercat source package (release-1.0.0 cycle M2).
+# Userspace-only build: kernel modules are delivered via ethercat-dkms
+# (DKMS PRE_BUILD configures inside the DKMS tree), so the deb build
+# disables the kernel half entirely.
+
+%:
+	dh $@
+
+override_dh_auto_configure:
+	dh_auto_configure -- --disable-kernel

@@ -149,7 +149,10 @@ build or the wrapper. The orig tarball stays pristine.
 The orig tarball is generated from the pinned upstream revision
 (`SRC_HASH` in `configure/RELEASE`); its version string embeds the git
 describe output and a recorded checksum of the generated orig
-accompanies `SRC_HASH`. The concrete mechanism lands in M2. M2 entry
+accompanies `SRC_HASH` (`ORIG_SHA256` binds the uncompressed tar
+stream). The orig excludes the doxygen-layout submodule by git-archive
+construction; its content is documentation-styling only and does not
+affect the build. The concrete mechanism lands in M2. M2 entry
 verification: confirm whether the pinned upstream revision ships its
 own `debian/` directory; if it does, this repository's packaging
 replaces it (recorded replace-vs-reuse decision).

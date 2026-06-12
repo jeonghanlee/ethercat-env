@@ -1,0 +1,36 @@
+Source: ethercat
+Section: admin
+Priority: optional
+Maintainer: Jeong Han Lee <jeonghan.lee@gmail.com>
+Build-Depends: debhelper-compat (= 13), pkgconf, autoconf, automake, libtool
+Standards-Version: 4.7.0
+Rules-Requires-Root: no
+Homepage: https://gitlab.com/etherlab.org/ethercat
+
+Package: ethercat-tools
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: EtherCAT master userspace command and libraries
+ Userspace half of the IgH EtherCAT master for the Debian 13 EtherCAT
+ environment: the ethercat command-line tool and the shared libraries
+ applications link against. Kernel modules are delivered separately by
+ ethercat-dkms; host integration (systemd, udev, configuration policy)
+ is delivered by ethercat-host.
+
+Package: ethercat-dkms
+Architecture: all
+Depends: ${misc:Depends}
+Description: EtherCAT master kernel modules (DKMS)
+ DKMS source for the IgH EtherCAT master kernel modules (ec_master and
+ the enabled device modules, generic profile). Kernel updates rebuild
+ the modules against the target kernel via DKMS.
+
+Package: ethercat-host
+Architecture: all
+Depends: ${misc:Depends}
+Description: EtherCAT master host integration
+ Host integration for the IgH EtherCAT master on Debian 13: systemd
+ service units, udev device-access rules with the ethercat system
+ group, and the reference runtime configuration. The live
+ /etc configuration is rendered by site provisioning; the service
+ fails closed when no configuration is present.

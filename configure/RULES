@@ -5,6 +5,7 @@ include $(TOP)/configure/RULES_DOCTOR
 include $(TOP)/configure/RULES_PROFILE
 include $(TOP)/configure/RULES_PATCH
 include $(TOP)/configure/RULES_SRC
+include $(TOP)/configure/RULES_PKG
 include $(TOP)/configure/RULES_ETHERCAT
 include $(TOP)/configure/RULES_RUNTIME
 include $(TOP)/configure/RULES_SYSTEMD

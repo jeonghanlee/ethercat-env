@@ -5,6 +5,13 @@
 # assert that the OTHER milestones' guards are present, and to act as the
 # regression gate for the root-affecting milestones (M8-M13) as they land.
 #
+# Release-1.0.0 cycle amendment (M2): pkg.verify joins verify.all as a
+# SKIP-gated member. Its checksum and series halves run only when the
+# corresponding artifacts exist; its build half never runs here - build
+# verification is owned by the disposable-VM packaging phase
+# (ethercat-env-validation), so verify.all stays green on hosts without the
+# packaging toolchain.
+#
 # Scope registries
 # ----------------
 # VERIFY_ROOT_ONLY_TARGETS  root-affecting targets that write no path and must
@@ -43,11 +50,14 @@ VERIFY_GUARDPATH_TARGETS ?= \
 	udev.install udev.remove \
 	command.install loader.install runtime.install \
 	rt.limits.install rt.grub.apply rt.grub.rollback \
-	remove.uninstall remove.rt remove.purge
+	remove.uninstall remove.rt remove.purge \
+	pkg.orig pkg.series
 
-# Repo-local path writers. They write only $(TOP)/.versions and must not acquire
-# doctor or require-root.
-VERIFY_NONROOT_GUARDPATH_TARGETS ?= src_version src_version.clean
+# Repo-local path writers. They write only repository-local paths
+# ($(TOP)/.versions, $(TOP)/packaging, $(TOP)/debian/patches) and must not
+# acquire doctor or require-root.
+VERIFY_NONROOT_GUARDPATH_TARGETS ?= src_version src_version.clean \
+	pkg.orig pkg.series
 
 VERIFY_ROOT_TARGETS ?= \
 	$(VERIFY_ROOT_ONLY_TARGETS) \
@@ -161,7 +171,7 @@ verify.residue:
 	fi
 
 ## Umbrella regression gate over the harness
-verify.all: verify.reproducibility verify.dryrun verify.idempotence verify.doctor-overrides verify.residue
+verify.all: verify.reproducibility verify.dryrun verify.idempotence verify.doctor-overrides verify.residue pkg.verify
 	$(QUIET)printf "verify.all: OK - repository-local verification harness passed\n"
 
 VARS_EXCLUDES += VERIFY_DRYRUN VERIFY_ROOT_ONLY_TARGETS VERIFY_ROOT_TARGETS

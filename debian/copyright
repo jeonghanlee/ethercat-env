@@ -1,0 +1,24 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: ethercat
+Upstream-Contact: EtherLab project <https://etherlab.org>
+Source: https://gitlab.com/etherlab.org/ethercat
+
+Files: *
+Copyright: Ingenieurgemeinschaft IgH and EtherLab project contributors
+License: GPL-2
+ The IgH EtherCAT master is licensed under the GNU General Public
+ License version 2. See the upstream COPYING file. On Debian systems
+ the complete text is available in /usr/share/common-licenses/GPL-2.
+
+Files: lib/*
+Copyright: Ingenieurgemeinschaft IgH and EtherLab project contributors
+License: LGPL-2.1
+ The EtherCAT master userspace library is licensed under the GNU Lesser
+ General Public License version 2.1. See the upstream COPYING.LESSER
+ file. On Debian systems the complete text is available in
+ /usr/share/common-licenses/LGPL-2.1.
+
+Files: debian/*
+Copyright: 2026 Jeong Han Lee <jeonghan.lee@gmail.com>
+License: GPL-2
+ Packaging is licensed under the same terms as the upstream master.
