@@ -36,22 +36,20 @@ runtime readiness checks, and field deployment prerequisites for Debian 13.
 
 ## Canonical Work Register
 
-Next session entry point: start the successor environment buildout - Debian
-packaging of the upstream master plus Ansible host-configuration roles, with
-the repository structure decision pending. `dev/milestone-buildout` is merged
-to master (`1f40451`) and both repositories are pushed. Revision 1 M1 through
-M15 and Revision 2 R2-1 through R2-12 are closed; R2-12 was validated by real
-execution on a Debian 13 VM (validation repository `ethercat-env-validation`)
-with five live-execution defects found and fixed (see R2-12 Findings). R2-13
-and M16 remain external hardware gates pending a real adapter and slave chain.
-The earlier partial VM harness in the `cloud-provision` and
-`ansible-provision` repositories is retired as superseded by
-`ethercat-env-validation`; its removal is follow-up work in those
-repositories.
+Next session entry point: Release 1.0.0 cycle M1 (successor delivery model
+and parity map, issue #1) on branch `dev/release-1.0.0`. The cycle work
+order and verification subs are in the Release 1.0.0 Cycle section below;
+procedures are in `docs/testplan_1.0.0.md`. Work-unit sync is complete:
+milestones M1 through M10 are issues #1 through #10 under GitHub milestone
+1.0.0. Pending cycle-open step: the planning commit. R2-13 and Revision 1
+M16 remain external hardware gates and inherit into the cycle unchanged.
 
-This file is the repository source of truth for milestone status. Agent memory
-may keep clone hints for reference repositories, but milestone status and
-carry-forward work must be updated here.
+The Release 1.0.0 cycle runs remote-authoritative: each milestone issue
+carries its verification checkbox list as the status source of truth and
+this register mirrors it; M11 is the register-local release gate. For the
+closed Revision 1 and Revision 2 records this file remains the source of
+truth. Agent memory may keep clone hints for reference repositories, but
+milestone status and carry-forward work must be updated here.
 
 ## Revision Model
 
@@ -62,6 +60,7 @@ milestone table, status, and external gates.
 | --- | --- | --- |
 | Revision 1 | Initial Debian 13 EtherCAT and RT target graph buildout, M1 through M16. | M1-M15 code-complete and repository-local verified; M16 blocked by external validation. |
 | Revision 2 | Round 2 hardening after full-code review of Revision 1. | R2-1 through R2-12 closed; R2-12 VM real-execution validated with five live-execution defects fixed; R2-13 remains an external hardware gate. |
+| Release 1.0.0 | Successor delivery model: Debian packaging of the upstream master plus Ansible host-configuration roles in this repository. | Open; cycle M1 through M10 tracked as issues #1 through #10, M11 register-local release gate. |
 
 ## Current Baseline
 
@@ -268,6 +267,64 @@ D2 wording (kernel selection is explicit, post-reboot confirmation is M16)
 still holds, but operators should expect the RT kernel to win the default
 menu entry once installed.
 
+## Release 1.0.0 Cycle
+
+The cycle target is the successor delivery model in this repository: Debian
+packaging of the upstream EtherCAT master plus Ansible host-configuration
+roles, with the `ethercat-env-validation` phase harness reused as the
+acceptance gate. Repository structure decision (2026-06-11):
+single-repository evolution - this repository owns the successor
+environment; no new repository is opened.
+
+Mode: remote-authoritative. Each milestone M1 through M10 is tracked by one
+GitHub issue (#1 through #10, matching M-numbers) whose verification
+checkbox list is the status source of truth; this register mirrors issue
+state. M11 is the register-local release gate
+and has no issue. Cycle M-numbers are cycle-local; cross-cycle references
+use revision-qualified names (for example, Revision 1 M16) or issue numbers.
+
+The cycle plan is `docs/testplan_1.0.0.md`; the standing acceptance vehicle
+is the `ethercat-env-validation` phase harness. Procedures live in the plan;
+this table tracks status only.
+
+| Topic | Work unit | Type | Status | Depends on | Evidence |
+| --- | --- | --- | --- | --- | --- |
+| Planning | M1 Successor delivery model and parity map | Milestone | Not started | None | Issue #1. |
+| | M1.T1 Parity map completeness review | Verification sub | Not started | M1 | |
+| Packaging | M2 Debian source package baseline | Milestone | Not started | M1 | Issue #2. |
+| | M2.T1 Pinned-revision source package build on Debian 13 | Verification sub | Not started | M2 | |
+| | M2.T2 Package build check joins the verification graph | Verification sub | Not started | M2 | |
+| Packaging | M3 DKMS module package | Milestone | Not started | M2 | Issue #3. |
+| | M3.T1 Install state and cross-kernel vermagic (F4 regression) | Verification sub | Not started | M3 | |
+| | M3.T2 Cross-kernel rebuild as permanent regression check | Verification sub | Not started | M3 | |
+| Packaging | M4 Userspace tools package | Milestone | Not started | M2 | Issue #4. |
+| | M4.T1 Command path, loader resolution, uninstall residue | Verification sub | Not started | M4 | |
+| Packaging | M5 Host integration packaging | Milestone | Not started | M3, M4 | Issue #5. |
+| | M5.T1 Group creation (F2), conffile handling (F3), purge audit (F5) | Verification sub | Not started | M5 | |
+| | M5.T2 Install and purge residue checks join the verification graph | Verification sub | Not started | M5 | |
+| | M5.T3 Re-run M3.T1 and M4.T1 per the dependency matrix | Verification sub | Not started | M5 | |
+| Ansible | M6 Ansible role: RT host configuration | Milestone | Not started | M1 | Issue #6. |
+| | M6.T1 Idempotent apply, check-mode accuracy, rt.status outcome parity | Verification sub | Not started | M6 | |
+| | M6.T2 ansible-lint joins the verification graph | Verification sub | Not started | M6 | |
+| Ansible | M7 Ansible role: EtherCAT master host | Milestone | Not started | M5, M6 | Issue #7. |
+| | M7.T1 Package install, bound master device (F3 regression), active service | Verification sub | Not started | M7 | |
+| | M7.T3 Re-run M6.T1 per the dependency matrix | Verification sub | Not started | M7 | |
+| Verification | M8 Repository-local verification | Milestone | Not started | M2-M7 | Issue #8. |
+| | M8.T1 Extended verify.all passes with lintian, ansible-lint, check-mode | Verification sub | Not started | M8 | |
+| | M8.T2 Verification wiring as permanent suite addition | Verification sub | Not started | M8 | |
+| Verification | M9 VM acceptance | Milestone | Not started | M8 | Issue #9. |
+| | M9.T1 New harness phases pass first-try with p1-p9 outcome parity | Verification sub | Not started | M9 | |
+| | M9.T4 Standing harness amended with package-install and Ansible phases | Verification sub | Not started | M9 | |
+| Documentation | M10 Documentation refresh | Milestone | Not started | M1-M9 | Issue #10. |
+| | M10.T1 Install, operation, removal documents match implemented behavior | Verification sub | Not started | M10 | |
+| Gate | M11 Release gate 1.0.0 | Release gate (register-local) | Not started | M1-M10 | Gates merge to master, tag 1.0.0, GitHub release. |
+| | M11.T1 Cycle batch re-run against the final tree | Verification sub | Not started | M11 | |
+| | M11.T2 Full automated suites | Verification sub | Not started | M11 | |
+| | M11.T3 Standing plan executed with M9.T4 amendments | Verification sub | Not started | M11 | |
+
+Tally: 11 milestones (10 issue-tracked, 1 register-local gate) and 21
+verification subs; 0 closed. Entry point: M1.
+
 ## Profile Policy
 
 The default profile should remain `generic` unless a native NIC profile is
@@ -334,22 +391,22 @@ document unless it is needed to prove host readiness on real hardware.
 
 ## Next Session Entry Point
 
-Revision 1 M1 through M15 and Revision 2 R2-1 through R2-12 are closed on
-branch `dev/milestone-buildout`. R2-12 was validated by real execution on a
-disposable Debian 13 VM driven from the local validation repository
-`ethercat-env-validation` (qemu/KVM, cloud image, phase scripts p1 through
-p9, evidence logs per phase). The acceptance run passes every phase first-try
-after the five R2-12 findings were fixed; the discovery and acceptance
-evidence sets are preserved in that repository.
+The Release 1.0.0 cycle is open on branch `dev/release-1.0.0`. Scope: the
+successor delivery model in this repository (single-repository evolution,
+decided 2026-06-11) - Debian packaging of the upstream master (the R2-12
+finding F4 DKMS knowledge feeds the packaging) plus Ansible
+host-configuration roles, acceptance-gated by the `ethercat-env-validation`
+phase harness. The work order M1 through M11 with verification subs is in
+the Release 1.0.0 Cycle section; procedures are in `docs/testplan_1.0.0.md`.
+Work-unit sync is complete: milestones M1 through M10 are issues #1 through
+#10 under GitHub milestone 1.0.0. Pending cycle-open step: the planning
+commit.
 
-The merge to master is complete (`1f40451`) and both repositories are pushed.
-The next step is the successor environment buildout: Debian packaging of the
-upstream master (the R2-12 finding F4 DKMS knowledge feeds the packaging) plus
-Ansible host-configuration roles, with the `ethercat-env-validation` phase
-harness reused as the acceptance gate; the repository structure decision is
-pending. R2-13 and M16 remain external hardware gates (real adapter, slave
+R2-13 and Revision 1 M16 remain external hardware gates (real adapter, slave
 chain, hardware reboot persistence, unload/reload, RT readiness, production
-approval) and inherit unchanged into whatever follows; they cannot close
-without target hardware. The earlier partial VM harness in the
-`cloud-provision` and `ansible-provision` repositories is retired as
-superseded by `ethercat-env-validation`.
+approval) and inherit into the 1.0.0 cycle unchanged; they cannot close
+without target hardware. Revision 1 and Revision 2 closure evidence is
+recorded in their sections above and merged to master (`1f40451`). Removal
+of the superseded partial VM harness in the `cloud-provision` and
+`ansible-provision` repositories remains follow-up work in those
+repositories.
