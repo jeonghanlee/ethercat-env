@@ -52,7 +52,7 @@ Description: EtherCAT master kernel modules (DKMS)
 
 Package: ethercat-host
 Architecture: all
-Depends: ${misc:Depends}
+Depends: ${misc:Depends}, ethercat-dkms, ethercat-tools
 Description: EtherCAT master host integration
  Host integration for the IgH EtherCAT master on Debian 13: systemd
  service units, udev device-access rules with the ethercat system

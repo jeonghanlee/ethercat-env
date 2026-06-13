@@ -36,18 +36,19 @@ runtime readiness checks, and field deployment prerequisites for Debian 13.
 
 ## Canonical Work Register
 
-Next session entry point: Release 1.0.0 cycle M5 (host integration
-packaging, issue #5) on branch `dev/release-1.0.0`. M1 through M4 are
-closed (2026-06-12/13, issues #1-#4): delivery model, source package
-baseline, ethercat-dkms, and the userspace tools split (libethercat1 /
-libethercat-dev / ethercat-tools, fresh-VM verified) are in place; VM
-evidence lives in `ethercat-env-validation` (`evidence/release-1.0.0/m2`,
-`m3`, `m4`). M5 entry precondition: amend issue #5 body for the U3/U4
-delivery-model decisions (carry-forward from M1). The cycle work order
-and verification subs are in the Release 1.0.0 Cycle section below;
-procedures are in `docs/testplan_1.0.0.md`. Milestones M1 through M10 are
-issues #1 through #10 under GitHub milestone 1.0.0. R2-13 and Revision 1
-M16 remain external hardware gates and inherit into the cycle unchanged.
+Next session entry point: Release 1.0.0 cycle M6 (Ansible role: RT host
+configuration, issue #6) on branch `dev/release-1.0.0`. M1 through M5 are
+closed (2026-06-12/13, issues #1-#5): delivery model, source package
+baseline, ethercat-dkms, the userspace tools split, and host integration
+(ethercat-host: systemd unit, udev rule, sysusers.d group, fail-closed
+config policy - fresh-VM verified incl. F2/F3/F5 and EC-8). VM evidence
+lives in `ethercat-env-validation` (`evidence/release-1.0.0/m2`-`m5`). M6
+opens the Ansible role cluster (depends on M1 only, not the packaging
+chain). The cycle work order and verification subs are in the Release
+1.0.0 Cycle section below; procedures are in `docs/testplan_1.0.0.md`.
+Milestones M1 through M10 are issues #1 through #10 under GitHub milestone
+1.0.0. R2-13 and Revision 1 M16 remain external hardware gates and
+inherit into the cycle unchanged.
 
 The Release 1.0.0 cycle runs remote-authoritative: each milestone issue
 carries its verification checkbox list as the status source of truth and
@@ -317,10 +318,10 @@ re-review, adding `libethercat1` (runtime library) and `libethercat-dev`
 | | M3.T2 Cross-kernel rebuild as permanent regression check | Verification sub | Done | M3 | Validation phase p11 (permanent); testplan M3 row references it. |
 | Packaging | M4 Userspace tools package | Milestone | Closed (2026-06-13) | M2 | Issue #4 closed. Three-way split libethercat1/-dev/ethercat-tools (M1 no-split reversed at M2/M4 re-review); cross-check ACCEPT by both reviewers (session rs20260612_204100). |
 | | M4.T1 Command path, loader resolution, uninstall residue | Verification sub | Done | M4 | Fresh VM (p12): ethercat on PATH, ldconfig resolves libethercat.so.1, pkg-config resolves, purge no residue (evidence/release-1.0.0/m4). |
-| Packaging | M5 Host integration packaging | Milestone | Not started | M3, M4 | Issue #5. |
-| | M5.T1 Group creation (F2), config ownership (F3), purge audit (F5) | Verification sub | Not started | M5 | |
-| | M5.T2 Install and purge residue checks join the verification graph | Verification sub | Not started | M5 | |
-| | M5.T3 Re-run M3.T1 and M4.T1 per the dependency matrix | Verification sub | Not started | M5 | |
+| Packaging | M5 Host integration packaging | Milestone | Closed (2026-06-13) | M3, M4 | Issue #5 closed. ethercat-host (systemd unit, udev rule, sysusers.d group, fail-closed config); cross-check ACCEPT by both reviewers (session rs20260613_002432). |
+| | M5.T1 Group creation (F2), config ownership (F3), purge audit (F5) | Verification sub | Done | M5 | Fresh VM (p13): sysusers group + udev rule, /dev/EtherCAT0 group ethercat, fail-closed without config, EC-8 interface up, purge retains group (evidence/release-1.0.0/m5). |
+| | M5.T2 Install and purge residue checks join the verification graph | Verification sub | Done | M5 | Validation phase p13 (permanent); testplan M5 row references it. |
+| | M5.T3 Re-run M3.T1 and M4.T1 per the dependency matrix | Verification sub | Done | M5 | p13 re-asserts dkms install state and tools command/loader after the host maintainer scripts. |
 | Ansible | M6 Ansible role: RT host configuration | Milestone | Not started | M1 | Issue #6. |
 | | M6.T1 Idempotent apply, check-mode accuracy, rt.status outcome parity | Verification sub | Not started | M6 | |
 | | M6.T2 ansible-lint joins the verification graph | Verification sub | Not started | M6 | |
@@ -341,8 +342,9 @@ re-review, adding `libethercat1` (runtime library) and `libethercat-dev`
 | | M11.T3 Standing plan executed with M9.T4 amendments | Verification sub | Not started | M11 | |
 
 Tally: 11 milestones (10 issue-tracked, 1 register-local gate) and 21
-verification subs; closed: 4 milestones (M1, M2, M3, M4), 6 subs (M1.T1,
-M2.T1, M2.T2, M3.T1, M3.T2, M4.T1). Entry point: M5.
+verification subs; closed: 5 milestones (M1, M2, M3, M4, M5), 9 subs
+(M1.T1, M2.T1, M2.T2, M3.T1, M3.T2, M4.T1, M5.T1, M5.T2, M5.T3). Entry
+point: M6.
 
 ## Profile Policy
 
@@ -418,15 +420,15 @@ host-configuration roles, acceptance-gated by the `ethercat-env-validation`
 phase harness. The work order M1 through M11 with verification subs is in
 the Release 1.0.0 Cycle section; procedures are in `docs/testplan_1.0.0.md`.
 Milestones M1 through M10 are issues #1 through #10 under GitHub milestone
-1.0.0. M1 through M4 are closed (2026-06-12/13, issues #1-#4): delivery
-model, source package baseline, the ethercat-dkms package carrying the
-F4 fix into the package path (cross-kernel vermagic verified on a fresh
-VM for the cloud and RT kernels), and the userspace tools split
-(libethercat1 / libethercat-dev / ethercat-tools). VM evidence:
-`ethercat-env-validation` (`evidence/release-1.0.0/m2`, `m3`, `m4`).
-Next: M5 (issue #5), host integration packaging; its entry precondition
-is the issue #5 body amendment for the U3/U4 decisions (carry-forward
-from M1).
+1.0.0. M1 through M5 are closed (2026-06-12/13, issues #1-#5): delivery
+model, source package baseline, the ethercat-dkms package (F4 fix,
+cross-kernel vermagic verified), the userspace tools split
+(libethercat1 / libethercat-dev / ethercat-tools), and host integration
+(ethercat-host: systemd unit, udev rule, sysusers.d group, fail-closed
+config; F2/F3/F5 and EC-8 verified on a fresh VM). VM evidence:
+`ethercat-env-validation` (`evidence/release-1.0.0/m2` through `m5`).
+Next: M6 (issue #6), the Ansible role for RT host configuration - the
+first role-cluster milestone, depending on M1 only.
 
 R2-13 and Revision 1 M16 remain external hardware gates (real adapter, slave
 chain, hardware reboot persistence, unload/reload, RT readiness, production

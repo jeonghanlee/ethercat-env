@@ -47,7 +47,7 @@ Source package `ethercat`, built from the pinned upstream revision plus
 | `libethercat1` | Runtime shared library (SONAME `libethercat.so.1`) | M4 re-review adopted the conventional library split (precedent: libmodbus, net-snmp, libusb, openssl, and 10 peers all split runtime from -dev). shlibs dependency only; symbols file deferred (see `libethercat1.README.Debian`). |
 | `libethercat-dev` | Headers (`ecrt.h`, `ectty.h`), `.so` symlink, static `.a`, pkg-config `.pc`, CMake config | `Depends: libethercat1 (= binary:Version)`. Acceptance: installs, `pkg-config --modversion libethercat` resolves, purges clean. |
 | `ethercat-tools` | `ethercat` CLI and bash completion | CLI only and self-contained - it does not link `libethercat1` (verified: no `-lethercat`, no library dependency). The runtime library is a separate deliverable for application authors. Loader: standard multiarch path, so the wrapper ld.so.conf.d fragment is superseded-by-package. |
-| `ethercat-host` | systemd units, udev rule, sysusers.d fragment, reference configuration outside /etc | Group lifecycle per U4 (see Group Lifecycle); ships NO `/etc/ethercat.conf` per U3 (see Configuration Ownership); unit fails closed when the configuration is absent. M5 decides its package dependencies (the operational `ethercat` CLI); it does not link `libethercat1`. |
+| `ethercat-host` | systemd unit (ethercat.service), udev rule (99-ethercat.rules), sysusers.d group, ethercatctl, reference config example outside /etc | Group lifecycle per U4 (see Group Lifecycle); ships NO `/etc/ethercat.conf` per U3 (see Configuration Ownership); unit enabled not started, fails closed when config absent. `Depends: ethercat-dkms, ethercat-tools` (ethercatctl uses the module and the CLI). Upstream SysV artifacts (init.d, sysconfig) are not shipped (Debian 13 is systemd-only). |
 
 ## Role Set
 
@@ -116,14 +116,17 @@ configuration (wireguard-tools, openvpn, wpa_supplicant fail-closed
 unit conditions, slurm-wlm, ceph orchestration-owned configuration):
 
 - `ethercat-host` ships no `/etc/ethercat.conf`. The reference default
-  lives outside /etc (exact path fixed in M5).
+  is shipped as `/usr/share/doc/ethercat-host/examples/ethercat.conf`
+  (M5).
 - The `ethercat_master` role is the sole writer of the /etc
   configuration; package upgrades cannot touch it and no dpkg conffile
   prompt can occur.
-- The unit fails closed when the configuration is absent: absence is
-  loud, never a silent empty-master start (closes the F3 class).
-- Package-only hosts require a documented operator step to create the
-  configuration from the reference default.
+- The unit fails closed when the configuration is absent: ethercatctl
+  exits non-zero when `/etc/ethercat.conf` is unreadable, so
+  `systemctl start ethercat` fails rather than starting an empty
+  master (closes the F3 class).
+- Package-only hosts copy the reference example to `/etc/ethercat.conf`
+  per the documented operator step in `ethercat-host.README.Debian`.
 - Testplan M5.T1 is amended accordingly (Added During Cycle,
   2026-06-12).
 

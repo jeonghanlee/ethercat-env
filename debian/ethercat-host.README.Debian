@@ -1,0 +1,23 @@
+ethercat-host for Debian
+------------------------
+
+Configuration ownership (U3): this package ships NO /etc/ethercat.conf.
+The EtherCAT master configuration is host-specific and is rendered by
+the Ansible role (ethercat_master, cycle M7). The service fails closed
+until a configuration is present: ethercatctl exits non-zero when
+/etc/ethercat.conf is not readable, so `systemctl start ethercat`
+fails rather than starting a master with no device.
+
+Operator step for package-only hosts (no Ansible): copy the reference
+example and edit it, then start the service:
+
+    sudo cp /usr/share/doc/ethercat-host/examples/ethercat.conf /etc/ethercat.conf
+    sudoedit /etc/ethercat.conf      # set MASTER0_DEVICE (and UPDOWN_INTERFACES)
+    sudo systemctl enable --now ethercat.service
+
+Group lifecycle (U4): the ethercat system group is declared via
+sysusers.d, so it exists before the udev rule loads (closes the device
+node group-ownership hazard). On purge the system group is retained per
+Debian convention; this is reported as a note, not residue.
+
+ -- Jeong Han Lee <jeonghan.lee@gmail.com>  Fri, 13 Jun 2026 00:45:00 -0700

@@ -1,4 +1,2 @@
-usr/sbin/ethercatctl
-etc/ethercat.conf
 etc/init.d/ethercat
 etc/sysconfig/ethercat

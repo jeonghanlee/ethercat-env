@@ -1,0 +1,14 @@
+[Unit]
+Description=EtherCAT Master Kernel Modules
+After=network.target syslog.target
+Documentation=man:ethercat man:ethercatctl
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/sbin/ethercatctl start
+ExecStop=/usr/sbin/ethercatctl stop
+ExecReload=/usr/sbin/ethercatctl restart
+
+[Install]
+WantedBy=multi-user.target
