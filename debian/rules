@@ -14,6 +14,16 @@ DKMS_SRC_DIR := debian/ethercat-dkms/usr/src/ethercat-$(DEB_VERSION_UPSTREAM)
 override_dh_auto_configure:
 	dh_auto_configure -- --disable-kernel
 
+# Debian practice: drop the libtool archive; nothing in this package set
+# consumes it and lintian flags it.
+execute_after_dh_auto_install:
+	rm -f debian/tmp/usr/lib/*/libethercat.la
+
+# Fail the build if any installed file is neither claimed by a package
+# nor listed in debian/not-installed (build-enforced no-residue).
+override_dh_missing:
+	dh_missing --fail-missing
+
 # The DKMS source ships PRISTINE from the orig tarball beside the build
 # tree (the in-tree copy is configured and built by this point); the
 # orig prefix already matches the dh_dkms-computed /usr/src path. The

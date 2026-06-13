@@ -7,15 +7,40 @@ Standards-Version: 4.7.0
 Rules-Requires-Root: no
 Homepage: https://gitlab.com/etherlab.org/ethercat
 
+Package: libethercat1
+Architecture: any
+Multi-Arch: same
+Section: libs
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: EtherCAT master userspace shared library
+ Runtime shared library (libethercat, SONAME libethercat.so.1) of the
+ IgH EtherCAT master for the Debian 13 EtherCAT environment.
+ Applications that drive the EtherCAT master through the realtime
+ application interface (ecrt.h) link against this library. The 1.0.0
+ package set has no in-tree consumer; the library is delivered for site
+ application authors. The ethercat command-line tool is self-contained
+ and does not link it.
+
+Package: libethercat-dev
+Architecture: any
+Multi-Arch: same
+Section: libdevel
+Depends: libethercat1 (= ${binary:Version}), ${misc:Depends}
+Description: EtherCAT master userspace library - development files
+ Development files for libethercat: the ecrt.h and ectty.h headers, the
+ .so linker symlink, the static archive, the pkg-config file, and the
+ CMake package configuration. Install this to build applications against
+ the IgH EtherCAT master realtime application interface.
+
 Package: ethercat-tools
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}
-Description: EtherCAT master userspace command and libraries
- Userspace half of the IgH EtherCAT master for the Debian 13 EtherCAT
- environment: the ethercat command-line tool and the shared libraries
- applications link against. Kernel modules are delivered separately by
- ethercat-dkms; host integration (systemd, udev, configuration policy)
- is delivered by ethercat-host.
+Description: EtherCAT master command-line tool
+ The ethercat command-line tool of the IgH EtherCAT master for the
+ Debian 13 EtherCAT environment, with its bash completion. The tool is
+ self-contained; the realtime application library is delivered
+ separately by libethercat1, kernel modules by ethercat-dkms, and host
+ integration (systemd, udev, configuration policy) by ethercat-host.
 
 Package: ethercat-dkms
 Architecture: all

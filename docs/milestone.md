@@ -36,17 +36,18 @@ runtime readiness checks, and field deployment prerequisites for Debian 13.
 
 ## Canonical Work Register
 
-Next session entry point: Release 1.0.0 cycle M4 (userspace tools package,
-issue #4) on branch `dev/release-1.0.0`. M1 through M3 are closed
-(2026-06-12, issues #1-#3): delivery model, source package baseline, and
-the ethercat-dkms package (F4 carried into the package path, cross-kernel
-vermagic verified on a fresh VM) are in place; VM evidence lives in
-`ethercat-env-validation` (`evidence/release-1.0.0/m2`, `m3`). The cycle
-work order and verification subs are in the Release 1.0.0 Cycle section
-below; procedures are in `docs/testplan_1.0.0.md`. Milestones M1 through
-M10 are issues #1 through #10 under GitHub milestone 1.0.0. R2-13 and
-Revision 1 M16 remain external hardware gates and inherit into the cycle
-unchanged.
+Next session entry point: Release 1.0.0 cycle M5 (host integration
+packaging, issue #5) on branch `dev/release-1.0.0`. M1 through M4 are
+closed (2026-06-12/13, issues #1-#4): delivery model, source package
+baseline, ethercat-dkms, and the userspace tools split (libethercat1 /
+libethercat-dev / ethercat-tools, fresh-VM verified) are in place; VM
+evidence lives in `ethercat-env-validation` (`evidence/release-1.0.0/m2`,
+`m3`, `m4`). M5 entry precondition: amend issue #5 body for the U3/U4
+delivery-model decisions (carry-forward from M1). The cycle work order
+and verification subs are in the Release 1.0.0 Cycle section below;
+procedures are in `docs/testplan_1.0.0.md`. Milestones M1 through M10 are
+issues #1 through #10 under GitHub milestone 1.0.0. R2-13 and Revision 1
+M16 remain external hardware gates and inherit into the cycle unchanged.
 
 The Release 1.0.0 cycle runs remote-authoritative: each milestone issue
 carries its verification checkbox list as the status source of truth and
@@ -299,6 +300,11 @@ outside /etc, fail-closed unit (WireGuard-class precedent). The `ethercat`
 group is sysusers.d-managed; purge retains system groups and audits report
 them as notes (F5 precedent).
 
+Amended 2026-06-13 (M4 re-review): the package set is five, not three -
+the M1 "no libethercat1 split" call is reversed at its scheduled M2/M4
+re-review, adding `libethercat1` (runtime library) and `libethercat-dev`
+(precedent: libmodbus and 13 peers); `ethercat-tools` narrows to the CLI.
+
 | Topic | Work unit | Type | Status | Depends on | Evidence |
 | --- | --- | --- | --- | --- | --- |
 | Planning | M1 Successor delivery model and parity map | Milestone | Closed (2026-06-12) | None | Issue #1 closed. `docs/delivery-model.md`; cross-check ACCEPT by both reviewers (session rs20260611_235423). |
@@ -309,8 +315,8 @@ them as notes (F5 precedent).
 | Packaging | M3 DKMS module package | Milestone | Closed (2026-06-12) | M2 | Issue #3 closed. `debian/ethercat-dkms.dkms` plus PRE_BUILD script; cross-check ACCEPT by both reviewers (session rs20260612_121927). |
 | | M3.T1 Install state and cross-kernel vermagic (F4 regression) | Verification sub | Done | M3 | Fresh VM: per-module vermagic matches on cloud and RT kernels; exactly-generic set (evidence/release-1.0.0/m3). |
 | | M3.T2 Cross-kernel rebuild as permanent regression check | Verification sub | Done | M3 | Validation phase p11 (permanent); testplan M3 row references it. |
-| Packaging | M4 Userspace tools package | Milestone | Not started | M2 | Issue #4. |
-| | M4.T1 Command path, loader resolution, uninstall residue | Verification sub | Not started | M4 | |
+| Packaging | M4 Userspace tools package | Milestone | Closed (2026-06-13) | M2 | Issue #4 closed. Three-way split libethercat1/-dev/ethercat-tools (M1 no-split reversed at M2/M4 re-review); cross-check ACCEPT by both reviewers (session rs20260612_204100). |
+| | M4.T1 Command path, loader resolution, uninstall residue | Verification sub | Done | M4 | Fresh VM (p12): ethercat on PATH, ldconfig resolves libethercat.so.1, pkg-config resolves, purge no residue (evidence/release-1.0.0/m4). |
 | Packaging | M5 Host integration packaging | Milestone | Not started | M3, M4 | Issue #5. |
 | | M5.T1 Group creation (F2), config ownership (F3), purge audit (F5) | Verification sub | Not started | M5 | |
 | | M5.T2 Install and purge residue checks join the verification graph | Verification sub | Not started | M5 | |
@@ -335,8 +341,8 @@ them as notes (F5 precedent).
 | | M11.T3 Standing plan executed with M9.T4 amendments | Verification sub | Not started | M11 | |
 
 Tally: 11 milestones (10 issue-tracked, 1 register-local gate) and 21
-verification subs; closed: 3 milestones (M1, M2, M3), 5 subs (M1.T1,
-M2.T1, M2.T2, M3.T1, M3.T2). Entry point: M4.
+verification subs; closed: 4 milestones (M1, M2, M3, M4), 6 subs (M1.T1,
+M2.T1, M2.T2, M3.T1, M3.T2, M4.T1). Entry point: M5.
 
 ## Profile Policy
 
@@ -417,8 +423,9 @@ model, source package baseline, and the ethercat-dkms package carrying
 the F4 fix into the package path (PRE_BUILD bootstrap from the pristine
 orig tree; cross-kernel vermagic verified on a fresh VM for the cloud and
 RT kernels). VM evidence: `ethercat-env-validation`
-(`evidence/release-1.0.0/m2`, `m3`). Next: M4 (issue #4), the userspace
-tools package.
+(`evidence/release-1.0.0/m2`, `m3`). Next: M5 (issue #5), host
+integration packaging; its entry precondition is the issue #5 body
+amendment for the U3/U4 decisions (carry-forward from M1).
 
 R2-13 and Revision 1 M16 remain external hardware gates (real adapter, slave
 chain, hardware reboot persistence, unload/reload, RT readiness, production

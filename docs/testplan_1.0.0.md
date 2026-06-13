@@ -41,7 +41,7 @@ adding package-install and Ansible-provisioning phases.
 | M1 Successor delivery model and parity map | M1.T1: every wrapper capability row carries a destination (package, role, development-only) and an acceptance criterion; no orphan capability against the Makefile target listing and `docs/parity-matrix.md`. | None. |
 | M2 Debian source package baseline | M2.T1: source package builds from the pinned upstream revision on Debian 13; orig source matches the `SRC_HASH` policy. | M2.T2: package build check joins the verification graph. |
 | M3 DKMS module package | M3.T1: package install reports installed DKMS state for all enabled modules; cross-kernel build for a non-running kernel produces matching vermagic (F4 regression). | M3.T2: cross-kernel rebuild case recorded as a permanent regression check (validation harness phase p11). |
-| M4 Userspace tools package | M4.T1: `ethercat` command resolves on PATH, shared libraries resolve via the loader, uninstall leaves no residue. | None. |
+| M4 Userspace tools package | M4.T1 (validation phase p12): `ethercat` command resolves on PATH, `libethercat1` resolves via the loader, uninstall leaves no residue; supplementary dev evidence: `libethercat-dev` installs and `pkg-config --modversion libethercat` resolves. | None. |
 | M5 Host integration packaging | M5.T1 (amended 2026-06-12, M1): the `ethercat` group is sysusers.d-declared and exists before udev rule load (F2); no `/etc/ethercat.conf` is shipped - the reference default lives outside /etc and the unit fails closed when the config is absent (F3); the unit path brings the configured UPDOWN interfaces up at service start (EC-8); service and udev states report correctly; purge retains system groups and audits report them as notes, ending clean (F5 semantics). M5.T3: re-run M3.T1 and M4.T1 per the dependency matrix. | M5.T2: install and purge residue checks join the verification graph. |
 | M6 Ansible role: RT host configuration | M6.T1: role applies on a clean host, a second run reports zero changes, check-mode predicts the apply, outcomes match `rt.status` expectations. | M6.T2: ansible-lint joins the verification graph. |
 | M7 Ansible role: EtherCAT master host | M7.T1: role installs the cycle packages, deploys the runtime configuration with a bound master device (F3 regression), and reaches an active service. M7.T3: re-run M6.T1 per the dependency matrix. | None. |
@@ -90,3 +90,12 @@ release) follows the git-workflow release reference.
   change to the DKMS fragment" covers these concrete F4 surfaces:
   templates/dkms.conf.in, debian/ethercat-dkms.dkms,
   debian/debian-prebuild.sh.
+- 2026-06-13 (M4): the M1 "no libethercat1 split" decision is reversed
+  at its scheduled M2/M4 re-review - the conventional three-way split
+  (libethercat1 / libethercat-dev / ethercat-tools) is adopted
+  (precedent: libmodbus and 13 peers). Validation phase p12 is the
+  M4.T1 vehicle. The cross-check (RV1-R2-F1) established that
+  libethercat1 has NO in-cycle consumer - the ethercat CLI is
+  self-contained and the host stack does not link it - so the library
+  is delivered for external application authors only; there is no
+  in-set ABI re-run dependency and the symbols file is deferred.

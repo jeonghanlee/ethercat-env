@@ -44,8 +44,10 @@ Source package `ethercat`, built from the pinned upstream revision plus
 | Package | Contents | Key decisions |
 | --- | --- | --- |
 | `ethercat-dkms` | Kernel module source under /usr/src, static `dkms.conf` | dh_dkms convention; `PRE_BUILD` runs bootstrap (autoreconf + configure with recorded options); F4 overrides (`LINUX_SOURCE_DIR`, `abs_builddir`) retained; module set fixed generic-only per the register Profile Policy; dkms_tree relocation limitation recorded on EC-5. |
-| `ethercat-tools` | `ethercat` CLI, shared libraries | No `libethercat1` split in 1.0.0 (re-review at M2/M4); lintian pass policy: clean modulo a recorded per-package override file with justifications; wrapper ld.so.conf.d loader fragment superseded-by-package. |
-| `ethercat-host` | systemd units, udev rule, sysusers.d fragment, reference configuration outside /etc | Group lifecycle per U4 (see Group Lifecycle); ships NO `/etc/ethercat.conf` per U3 (see Configuration Ownership); unit fails closed when the configuration is absent. |
+| `libethercat1` | Runtime shared library (SONAME `libethercat.so.1`) | M4 re-review adopted the conventional library split (precedent: libmodbus, net-snmp, libusb, openssl, and 10 peers all split runtime from -dev). shlibs dependency only; symbols file deferred (see `libethercat1.README.Debian`). |
+| `libethercat-dev` | Headers (`ecrt.h`, `ectty.h`), `.so` symlink, static `.a`, pkg-config `.pc`, CMake config | `Depends: libethercat1 (= binary:Version)`. Acceptance: installs, `pkg-config --modversion libethercat` resolves, purges clean. |
+| `ethercat-tools` | `ethercat` CLI and bash completion | CLI only and self-contained - it does not link `libethercat1` (verified: no `-lethercat`, no library dependency). The runtime library is a separate deliverable for application authors. Loader: standard multiarch path, so the wrapper ld.so.conf.d fragment is superseded-by-package. |
+| `ethercat-host` | systemd units, udev rule, sysusers.d fragment, reference configuration outside /etc | Group lifecycle per U4 (see Group Lifecycle); ships NO `/etc/ethercat.conf` per U3 (see Configuration Ownership); unit fails closed when the configuration is absent. M5 decides its package dependencies (the operational `ethercat` CLI); it does not link `libethercat1`. |
 
 ## Role Set
 
@@ -63,11 +65,11 @@ Source package `ethercat`, built from the pinned upstream revision plus
 | EC-3 | Device profile selection | package: ethercat-dkms | packaged set is generic-only; native-profile selection retained dev-only (M8) | M3.T1: installed DKMS state covers exactly the generic set; native profiles remain wrapper-built per the Profile Policy. |
 | EC-4 | Patch handling | package: ethercat (source) | wrapper registry is the source of truth, retained dev-only (M8); archive class never enters the series | M2.T1: `debian/patches/series` is generated from the active classes; the orig tarball stays pristine. |
 | EC-5 | Module lifecycle | package: ethercat-dkms | gate (Revision 1 M16: kernel-update rebuild on hardware); dkms_tree relocation requires conf regeneration; autoinstall via the dkms framework | M3.T1/T2: static `dkms.conf` with `PRE_BUILD` bootstrap and F4 overrides; cross-kernel build for a non-running kernel yields matching vermagic. |
-| EC-6 | Userspace command | package: ethercat-tools | wrapper loader fragment superseded-by-package | M4.T1: command resolves on PATH, libraries resolve via the loader, uninstall leaves no residue. |
+| EC-6 | Userspace command | package: ethercat-tools | the shared library is split out as `libethercat1` plus `libethercat-dev` (see Package Set); wrapper loader fragment superseded-by-package | M4.T1: command resolves on PATH, libraries resolve via the loader, uninstall leaves no residue. Dev: `libethercat-dev` installs and `pkg-config --modversion libethercat` resolves. |
 | EC-7 | `ethercat.conf` | role: ethercat_master | package: ethercat-host ships the reference default outside /etc and the fail-closed unit (U3) | M7.T1: role renders a bound master device; M5.T1 (amended): no /etc file shipped, unit fails closed absent the config. |
 | EC-8 | NIC preparation | package: ethercat-host | role renders the UPDOWN entries (M7); wrapper iface.* retained dev-only (M8); gate (Revision 1 M16: reboot persistence) | M5.T1: the unit path (ethercatctl + rendered config) brings interfaces up at boot; M7.T1: rendering correctness. |
 | EC-9 | systemd and udev | package: ethercat-host | group exists before udev rule load via sysusers.d (U4) | M5.T1: service and udev states report correctly; group precedes rule load. |
-| EC-10 | Removal | package: ethercat-dkms/-tools/-host maintainer scripts | wrapper remove.* retained dev-only (M8); purge retains system groups, audited as notes (U4) | M5.T1/T2: purge audits clean under the amended semantics; M9.T1: VERDICT=clean parity on the package path. |
+| EC-10 | Removal | package: maintainer scripts | removal inherently spans the whole binary set (libethercat1, libethercat-dev, ethercat-dkms, ethercat-tools, ethercat-host); wrapper remove.* retained dev-only (M8); purge retains system groups, audited as notes (U4) | M5.T1/T2: purge audits clean under the amended semantics; M9.T1: VERDICT=clean parity on the package path. |
 
 ## Real-Time Destinations
 
@@ -161,8 +163,12 @@ replaces it (recorded replace-vs-reuse decision).
 
 The M8 lintian gate passes when all packages are clean modulo a
 recorded per-package override file; every override carries a one-line
-justification. The known 1.0.0 override class is the no-split shared
-library in `ethercat-tools`.
+justification. The M1 no-split override class is retired: the M4
+re-review adopted the conventional `libethercat1` / `libethercat-dev`
+split, so the runtime package name matches the SONAME and no
+package-name override is needed. A non-fatal `no-symbols-control-file`
+note on `libethercat1` is accepted for 1.0.0 (symbols file deferred,
+see `libethercat1.README.Debian`).
 
 ## Coverage Cross-Check (M1.T1)
 

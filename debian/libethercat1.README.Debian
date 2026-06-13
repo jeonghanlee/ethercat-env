@@ -1,0 +1,17 @@
+libethercat1 for Debian
+-----------------------
+
+No in-tree consumer: in the 1.0.0 package set nothing links this
+library - the ethercat command-line tool is self-contained, and the
+host stack drives the master through ethercatctl and the kernel
+module. The library is delivered for site application authors who write
+EtherCAT master applications against the realtime application interface
+(ecrt.h), exactly as libmodbus ships its runtime library independently
+of any tool.
+
+Symbols file: this package ships a shlibs dependency only, not a
+symbols control file, for the release-1.0.0 cycle. Upstream maintains a
+libethercat.map version script, so a symbols file can be added later
+for ABI-break detection without a SONAME bump.
+
+ -- Jeong Han Lee <jeonghan.lee@gmail.com>  Fri, 12 Jun 2026 21:00:00 -0700
