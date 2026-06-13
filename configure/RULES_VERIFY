@@ -30,7 +30,7 @@
 # `doctor` or `require-root`.
 
 .PHONY: verify.reproducibility verify.dryrun verify.idempotence verify.doctor-overrides \
-        verify.residue verify.all
+        verify.residue verify.ansible-lint verify.all
 
 # Root-affecting targets that do not write or remove a guarded path.
 VERIFY_ROOT_ONLY_TARGETS ?= \
@@ -170,8 +170,25 @@ verify.residue:
 		printf "verify.residue: SKIP - remove.audit not defined yet (M13 pending)\n"; \
 	fi
 
+# ansible-lint over the role tree. SKIP-gated like the pkg.verify build
+# half: runs only where ansible-lint is installed (the VM acceptance
+# phase), SKIPs with a note on the inspection-only workstation. M6 adds
+# this check; M8 is the umbrella that runs the full lint/check graph.
+## Lint the Ansible roles when ansible-lint is available; skip otherwise
+verify.ansible-lint:
+	$(QUIET)if command -v ansible-lint >/dev/null 2>&1; then \
+		if ansible-lint $(TOP)/ansible >/dev/null 2>&1; then \
+			printf "verify.ansible-lint: OK - ansible-lint clean\n"; \
+		else \
+			printf "verify.ansible-lint: FAIL - ansible-lint reported issues\n" >&2; \
+			ansible-lint $(TOP)/ansible >&2; exit 1; \
+		fi; \
+	else \
+		printf "verify.ansible-lint: SKIP - ansible-lint absent; lint runs in the VM phase\n"; \
+	fi
+
 ## Umbrella regression gate over the harness
-verify.all: verify.reproducibility verify.dryrun verify.idempotence verify.doctor-overrides verify.residue pkg.verify
+verify.all: verify.reproducibility verify.dryrun verify.idempotence verify.doctor-overrides verify.residue pkg.verify verify.ansible-lint
 	$(QUIET)printf "verify.all: OK - repository-local verification harness passed\n"
 
 VARS_EXCLUDES += VERIFY_DRYRUN VERIFY_ROOT_ONLY_TARGETS VERIFY_ROOT_TARGETS

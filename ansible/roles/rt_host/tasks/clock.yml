@@ -1,0 +1,14 @@
+---
+- name: Read the current clock source
+  ansible.builtin.command:
+    cmd: cat /sys/devices/system/clocksource/clocksource0/current_clocksource
+  register: rt_host_clocksource
+  changed_when: false
+  check_mode: false
+
+- name: Report the clock source against the expected value
+  ansible.builtin.debug:
+    msg: >-
+      clocksource current={{ rt_host_clocksource.stdout }}
+      expected={{ rt_host_expected_clocksource }}
+      {{ '(match)' if rt_host_clocksource.stdout == rt_host_expected_clocksource else '(differs - review on target hardware)' }}

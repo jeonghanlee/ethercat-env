@@ -1,0 +1,37 @@
+---
+# rt_host role defaults - mirror the active CONFIG_RT policy values
+# (release-1.0.0 cycle M6). Outcomes match `make rt.status`.
+
+# RT kernel and headers (D2: install only, never change the boot default).
+rt_host_install_kernel: true
+rt_host_kernel_pkg: linux-image-rt-amd64
+rt_host_headers_pkg: linux-headers-rt-amd64
+
+# Realtime group and limits.
+rt_host_group: realtime
+rt_host_limits_file: /etc/security/limits.d/99-realtime.conf
+rt_host_limits:
+  - { item: rtprio, value: "99" }
+  - { item: memlock, value: unlimited }
+  - { item: nice, value: "-20" }
+
+# GRUB boot parameters (backup-once, append-when-absent, no set-default).
+rt_host_apply_grub: true
+rt_host_grub_file: /etc/default/grub
+rt_host_grub_backup: /etc/default/grub.ethercat-rt.bak
+rt_host_grub_variable: GRUB_CMDLINE_LINUX_DEFAULT
+rt_host_grub_params:
+  - intel_pstate=disable
+
+# Clock source (read-only report).
+rt_host_expected_clocksource: tsc
+
+# Service policy (mask the allowlist only).
+rt_host_apply_services: true
+rt_host_service_allowlist:
+  - irqbalance.service
+
+# tuned (report-only by default; apply is an explicit opt-in, matching the
+# wrapper policy that tuned is never auto-engaged).
+rt_host_tuned_profile: realtime
+rt_host_tuned_apply: false

@@ -1,0 +1,7 @@
+---
+# Mask only the allowlisted services; never touch a service outside it.
+- name: Mask the allowlisted RT services
+  ansible.builtin.systemd_service:
+    name: "{{ item }}"
+    masked: true
+  loop: "{{ rt_host_service_allowlist }}"

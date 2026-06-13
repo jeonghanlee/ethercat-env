@@ -1,0 +1,17 @@
+---
+galaxy_info:
+  role_name: rt_host
+  namespace: ethercat_env
+  author: Jeong Han Lee
+  description: Real-time host configuration for the Debian 13 EtherCAT environment
+  license: GPL-2.0-or-later
+  min_ansible_version: "2.15"
+  platforms:
+    - name: Debian
+      versions:
+        - trixie
+  galaxy_tags:
+    - realtime
+    - ethercat
+    - debian
+dependencies: []

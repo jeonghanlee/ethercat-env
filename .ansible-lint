@@ -1,0 +1,7 @@
+---
+profile: basic
+exclude_paths:
+  - ethercat-src/
+  - review_sessions/
+  - packaging/
+  - debian/

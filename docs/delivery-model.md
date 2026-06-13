@@ -53,7 +53,7 @@ Source package `ethercat`, built from the pinned upstream revision plus
 
 | Role | Scope | Key decisions |
 | --- | --- | --- |
-| `rt_host` | RULES_RT semantics: RT kernel and headers, realtime group and limits, GRUB parameters, clock source, service policy, tuned (cycle M6) | Variables mirror the Revision 1 M11 policy decisions; check-mode accurate; outcomes match `rt.status` expectations. |
+| `rt_host` | RULES_RT semantics: RT kernel and headers (RT-1), realtime group and limits (RT-3), GRUB parameters (RT-4), clock source report (RT-5), service policy (RT-6), tuned report (RT-7); RT-2 (kernel select) and RT-8 (readiness) are covered by the `make rt.status` oracle, not role tasks (cycle M6) | `ansible/roles/rt_host`, vars `rt_host_*` mirror the active CONFIG_RT policy; no GRUB boot-default change (D2); tuned report-only by default (opt-in apply); check-mode accurate; outcomes match `rt.status`. RT-9/RT-10 are dev-only, not in the role. |
 | `ethercat_master` | Installs the cycle packages, renders and deploys `ethercat.conf` from inventory variables as the sole /etc owner, manages service state (cycle M7) | Boot-time interface preparation is package-path behavior (unit + ethercatctl + rendered UPDOWN entries); the role owns rendering correctness. |
 
 ## EtherCAT Destinations
@@ -76,13 +76,13 @@ Source package `ethercat`, built from the pinned upstream revision plus
 | Row | Capability | Primary destination | Annotations | 1.0.0 acceptance |
 | --- | --- | --- | --- | --- |
 | RT-1 | RT kernel provisioning | role: rt_host | | M6.T1: outcome parity with `rt.status`. |
-| RT-2 | RT kernel selection | role: rt_host | gate (Revision 1 M16: post-reboot confirmation) | M6.T1: pre-reboot selection state parity. |
+| RT-2 | RT kernel selection | role: rt_host | gate (Revision 1 M16: post-reboot confirmation); verified via the rt.status oracle, not a dedicated role task (no set-default) | M6.T1: pre-reboot selection state parity. |
 | RT-3 | Realtime limits | role: rt_host | | M6.T1: group and limits state parity. |
 | RT-4 | Boot parameters | role: rt_host | gate (Revision 1 M16: reboot persistence) | M6.T1: GRUB parameter and backup state parity. |
 | RT-5 | Clock source | role: rt_host | | M6.T1: clock source report parity. |
 | RT-6 | Service policy | role: rt_host | | M6.T1: allowlisted service policy parity. |
 | RT-7 | tuned support | role: rt_host | | M6.T1: available/selected/active report parity. |
-| RT-8 | RT readiness | role: rt_host | gate (Revision 1 M16: post-reboot RT evidence) | M6.T1: consolidated readiness report parity. |
+| RT-8 | RT readiness | role: rt_host | gate (Revision 1 M16: post-reboot RT evidence); verified via the rt.status oracle, not a dedicated role task | M6.T1: consolidated readiness report parity. |
 | RT-9 | Priority helper | dev-only | interactive-operational tool | M8.T1: retained under the extended verify graph. |
 | RT-10 | Latency evidence | dev-only | archive-classified tooling | M8.T1: retained under the extended verify graph. |
 

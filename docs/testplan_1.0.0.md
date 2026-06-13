@@ -43,7 +43,7 @@ adding package-install and Ansible-provisioning phases.
 | M3 DKMS module package | M3.T1: package install reports installed DKMS state for all enabled modules; cross-kernel build for a non-running kernel produces matching vermagic (F4 regression). | M3.T2: cross-kernel rebuild case recorded as a permanent regression check (validation harness phase p11). |
 | M4 Userspace tools package | M4.T1 (validation phase p12): `ethercat` command resolves on PATH, `libethercat1` resolves via the loader, uninstall leaves no residue; supplementary dev evidence: `libethercat-dev` installs and `pkg-config --modversion libethercat` resolves. | None. |
 | M5 Host integration packaging | M5.T1 (amended 2026-06-12, M1): the `ethercat` group is sysusers.d-declared and exists before udev rule load (F2); no `/etc/ethercat.conf` is shipped - the reference default lives outside /etc and the unit fails closed when the config is absent (F3); the unit path brings the configured UPDOWN interfaces up at service start (EC-8); service and udev states report correctly; purge retains system groups and audits report them as notes, ending clean (F5 semantics). M5.T3: re-run M3.T1 and M4.T1 per the dependency matrix. | M5.T2 (validation phase p13): install and purge residue checks land as a permanent regression phase. |
-| M6 Ansible role: RT host configuration | M6.T1: role applies on a clean host, a second run reports zero changes, check-mode predicts the apply, outcomes match `rt.status` expectations. | M6.T2: ansible-lint joins the verification graph. |
+| M6 Ansible role: RT host configuration | M6.T1 (validation phase p14): role applies on a clean host, a second run reports zero changes, check-mode predicts the apply, the GRUB boot default is unchanged (D2), outcomes match `rt.status` expectations. | M6.T2: ansible-lint (profile basic) joins the verification graph via SKIP-gated `verify.ansible-lint`; M8 is the umbrella that runs lintian + ansible-lint + check-mode together. |
 | M7 Ansible role: EtherCAT master host | M7.T1: role installs the cycle packages, deploys the runtime configuration with a bound master device (F3 regression), and reaches an active service. M7.T3: re-run M6.T1 per the dependency matrix. | None. |
 | M8 Repository-local verification | M8.T1: extended `verify.all` passes with lintian, ansible-lint, and check-mode wired in. | M8.T2: the wiring itself is the permanent suite addition. |
 | M9 VM acceptance | M9.T1: new harness phases pass first-try on a fresh Debian 13 VM with outcome parity against the p1-p9 source-build path. | M9.T4: standing harness amended with package-install and Ansible-provisioning phases. |
@@ -109,3 +109,11 @@ release) follows the git-workflow release reference.
   not shipped (Debian 13 systemd-only). ethercat-host Depends:
   ethercat-dkms, ethercat-tools. Validation phase p13 is the permanent
   M5.T2 regression asset.
+- 2026-06-13 (M6): rt_host Ansible role under ansible/roles/rt_host
+  (vars rt_host_*), mirroring RULES_RT outcomes; tuned report-only by
+  default; no GRUB boot-default change (D2). ansible-lint (profile
+  basic) joins verify.all via SKIP-gated verify.ansible-lint - M6 adds
+  this check, M8 is the umbrella that runs the full lint/check graph
+  (no double-count). Validation phase p14 is the first Ansible-
+  provisioning phase (the M9.T4-scoped class), landing permanent now
+  per the p11/p13 precedent.
