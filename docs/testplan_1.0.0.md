@@ -43,9 +43,9 @@ adding package-install and Ansible-provisioning phases.
 | M3 DKMS module package | M3.T1: package install reports installed DKMS state for all enabled modules; cross-kernel build for a non-running kernel produces matching vermagic (F4 regression). | M3.T2: cross-kernel rebuild case recorded as a permanent regression check (validation harness phase p11). |
 | M4 Userspace tools package | M4.T1 (validation phase p12): `ethercat` command resolves on PATH, `libethercat1` resolves via the loader, uninstall leaves no residue; supplementary dev evidence: `libethercat-dev` installs and `pkg-config --modversion libethercat` resolves. | None. |
 | M5 Host integration packaging | M5.T1 (amended 2026-06-12, M1): the `ethercat` group is sysusers.d-declared and exists before udev rule load (F2); no `/etc/ethercat.conf` is shipped - the reference default lives outside /etc and the unit fails closed when the config is absent (F3); the unit path brings the configured UPDOWN interfaces up at service start (EC-8); service and udev states report correctly; purge retains system groups and audits report them as notes, ending clean (F5 semantics). M5.T3: re-run M3.T1 and M4.T1 per the dependency matrix. | M5.T2 (validation phase p13): install and purge residue checks land as a permanent regression phase. |
-| M6 Ansible role: RT host configuration | M6.T1 (validation phase p14): role applies on a clean host, a second run reports zero changes, check-mode predicts the apply, the GRUB boot default is unchanged (D2), outcomes match `rt.status` expectations. | M6.T2: ansible-lint (profile basic) joins the verification graph via SKIP-gated `verify.ansible-lint`; M8 is the umbrella that runs lintian + ansible-lint + check-mode together. |
+| M6 Ansible role: RT host configuration | M6.T1 (validation phase p14): role applies on a clean host, a second run reports zero changes, check-mode predicts the apply, the GRUB boot default is unchanged (D2), outcomes match `rt.status` expectations. | M6.T2: ansible-lint (profile basic) joins the verification graph via SKIP-gated `verify.ansible-lint`; M8 is the umbrella that runs lintian + ansible-lint + a playbook syntax-check together (real ansible --check stays in the role phases p14/p15). |
 | M7 Ansible role: EtherCAT master host | M7.T1 (validation phase p15): role installs the cycle packages, deploys `/etc/ethercat.conf` with a bound master device (F3 regression) and a rendered UPDOWN (EC-8), reaches an active service with the device module attached, and is idempotent; an empty device fails closed. M7.T3: re-run rt_host via site.yml - an idempotent re-apply (changed=0) under the M7 inventory/layout per the dependency matrix; the rt_host check-mode and rt.status-parity facets were authoritatively verified at M6 (p14) and are not re-exercised here. | None (p15 is the permanent M7 phase). |
-| M8 Repository-local verification | M8.T1: extended `verify.all` passes with lintian, ansible-lint, and check-mode wired in. | M8.T2: the wiring itself is the permanent suite addition. |
+| M8 Repository-local verification (validation phase p16) | M8.T1: extended `verify.all` passes with lintian (`verify.lintian`, `--fail-on error` on the .changes), ansible-lint (`verify.ansible-lint`, from M6), and a playbook syntax-check (`verify.syntax-check`) wired in - all members REAL on the VM. | M8.T2: the verify.all membership is the permanent suite addition. |
 | M9 VM acceptance | M9.T1: new harness phases pass first-try on a fresh Debian 13 VM with outcome parity against the p1-p9 source-build path. | M9.T4: standing harness amended with package-install and Ansible-provisioning phases. |
 | M10 Documentation refresh | M10.T1: install, operation, and removal documents match implemented package and role behavior. | None. |
 | M11 Release gate 1.0.0 | M11.T1: cycle batch re-run (see Release Gate). M11.T3: standing plan executed with M9.T4 amendments in effect. | M11.T2: full automated suites. |
@@ -126,3 +126,13 @@ release) follows the git-workflow release reference.
   ethercat_master (the end-to-end deliverable). New re-run matrix row
   covers the parallel ethercat.conf renderers (.in and the role .j2).
   Validation phase p15 applies site.yml and is the permanent M7 phase.
+- 2026-06-13 (M8): verify.all becomes the repository-local umbrella -
+  M6 added verify.ansible-lint (the rt_host lint check); M8 adds
+  verify.syntax-check (ansible-playbook --syntax-check over the
+  playbooks, real on any host with ansible-playbook) and verify.lintian
+  (lintian --fail-on error on the built .changes, SKIP-gated). No
+  double-count: ansible-lint is confirmed, not re-added. Validation
+  phase p16 builds the packages, runs lintian, and runs make verify.all
+  with every lint/check member REAL (the M8.T1 evidence); the actual
+  lintian override set is recorded in delivery-model after p16. p16 is
+  the lint/check gate, distinct from the M9 acceptance phases.

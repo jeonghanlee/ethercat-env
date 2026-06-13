@@ -1,0 +1,6 @@
+# The installsysusers dh addon ships in debhelper itself and is enabled
+# via `dh $@ --with installsysusers` because auto-sequencing of
+# dh_installsysusers only starts at compat 14. debhelper-compat (= 13)
+# pulls debhelper, which provides the addon, so an explicit
+# libdebhelper-perl build-dependency is redundant.
+ethercat source: missing-build-dependency-for-dh-addon installsysusers *

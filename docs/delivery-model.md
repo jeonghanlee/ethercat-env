@@ -164,14 +164,33 @@ replaces it (recorded replace-vs-reuse decision).
 
 ## Lintian Pass Policy
 
-The M8 lintian gate passes when all packages are clean modulo a
-recorded per-package override file; every override carries a one-line
-justification. The M1 no-split override class is retired: the M4
-re-review adopted the conventional `libethercat1` / `libethercat-dev`
-split, so the runtime package name matches the SONAME and no
-package-name override is needed. A non-fatal `no-symbols-control-file`
-note on `libethercat1` is accepted for 1.0.0 (symbols file deferred,
-see `libethercat1.README.Debian`).
+The M8 lintian gate is `lintian --fail-on error` over the built
+.changes (source plus all binaries), wired into `verify.all` as
+`verify.lintian` (SKIP-gated; real on the VM). The gate passes when no
+error-level tag remains except those carried by a recorded per-package
+`debian/<pkg>.lintian-overrides` entry with a one-line justification; a
+genuine packaging defect is fixed, not overridden. The M1 no-split
+override class is retired: the M4 split makes the runtime package name
+match the SONAME, so no package-name override is needed. The
+`no-symbols-control-file` tag on `libethercat1` is info-level
+(non-fatal under `--fail-on error`), so it needs no override (symbols
+file deferred, see `libethercat1.README.Debian`).
+
+## M8 Lintian Override Set
+
+Established by the first real lintian run (M8 phase p16,
+`lintian --fail-on error` on the .changes):
+
+- `ethercat source: missing-build-dependency-for-dh-addon installsysusers`
+  (`debian/source/lintian-overrides`) - the installsysusers dh addon
+  ships in debhelper and is enabled via `--with installsysusers` on
+  compat 13; debhelper-compat (= 13) pulls it, so the explicit
+  libdebhelper-perl build-dep lintian asks for is redundant.
+
+One genuine defect was fixed rather than overridden:
+`libethercat-dev: description-contains-invalid-control-statement` - an
+extended-description line began with `.so`; the description was
+reworded so no line starts with a period.
 
 ## Coverage Cross-Check (M1.T1)
 

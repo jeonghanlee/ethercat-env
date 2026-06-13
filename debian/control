@@ -27,10 +27,11 @@ Multi-Arch: same
 Section: libdevel
 Depends: libethercat1 (= ${binary:Version}), ${misc:Depends}
 Description: EtherCAT master userspace library - development files
- Development files for libethercat: the ecrt.h and ectty.h headers, the
- .so linker symlink, the static archive, the pkg-config file, and the
- CMake package configuration. Install this to build applications against
- the IgH EtherCAT master realtime application interface.
+ Development files for the libethercat shared library: the C headers
+ (ecrt.h and ectty.h), the development symlink, the static archive, the
+ pkg-config file, and the CMake package configuration. Install this to
+ build applications against the IgH EtherCAT master realtime
+ application interface.
 
 Package: ethercat-tools
 Architecture: any
