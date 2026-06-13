@@ -1,0 +1,22 @@
+ethercat-dkms for Debian
+------------------------
+
+Module identity: dkms module "ethercat", version equal to the upstream
+package version (for example 1.6.9+4+g46cc20e6, derived from
+debian/changelog). This intentionally differs from the development
+wrapper MODULE_VERSION (1.6.9) recorded in configure/CONFIG_MODULE of
+the packaging repository.
+
+dkms_tree relocation: the dkms.conf forces
+abs_builddir=/var/lib/dkms/ethercat/<version>/build to keep
+cross-kernel builds inside the DKMS tree (the upstream build system
+bakes this path at configure time). A relocated dkms_tree re-opens the
+build escape and requires a regenerated dkms.conf.
+
+Accepted build cost: the upstream top-level Kbuild compiles the
+examples/ modules on every DKMS build although this package never
+ships them; upstream exposes no gate. A future example-module compile
+failure on a new kernel fails the whole DKMS build - report it against
+the packaging repository.
+
+ -- Jeong Han Lee <jeonghan.lee@gmail.com>  Fri, 12 Jun 2026 12:50:00 -0700

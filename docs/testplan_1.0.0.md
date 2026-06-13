@@ -40,7 +40,7 @@ adding package-install and Ansible-provisioning phases.
 | --- | --- | --- |
 | M1 Successor delivery model and parity map | M1.T1: every wrapper capability row carries a destination (package, role, development-only) and an acceptance criterion; no orphan capability against the Makefile target listing and `docs/parity-matrix.md`. | None. |
 | M2 Debian source package baseline | M2.T1: source package builds from the pinned upstream revision on Debian 13; orig source matches the `SRC_HASH` policy. | M2.T2: package build check joins the verification graph. |
-| M3 DKMS module package | M3.T1: package install reports installed DKMS state for all enabled modules; cross-kernel build for a non-running kernel produces matching vermagic (F4 regression). | M3.T2: cross-kernel rebuild case recorded as a permanent regression check. |
+| M3 DKMS module package | M3.T1: package install reports installed DKMS state for all enabled modules; cross-kernel build for a non-running kernel produces matching vermagic (F4 regression). | M3.T2: cross-kernel rebuild case recorded as a permanent regression check (validation harness phase p11). |
 | M4 Userspace tools package | M4.T1: `ethercat` command resolves on PATH, shared libraries resolve via the loader, uninstall leaves no residue. | None. |
 | M5 Host integration packaging | M5.T1 (amended 2026-06-12, M1): the `ethercat` group is sysusers.d-declared and exists before udev rule load (F2); no `/etc/ethercat.conf` is shipped - the reference default lives outside /etc and the unit fails closed when the config is absent (F3); the unit path brings the configured UPDOWN interfaces up at service start (EC-8); service and udev states report correctly; purge retains system groups and audits report them as notes, ending clean (F5 semantics). M5.T3: re-run M3.T1 and M4.T1 per the dependency matrix. | M5.T2: install and purge residue checks join the verification graph. |
 | M6 Ansible role: RT host configuration | M6.T1: role applies on a clean host, a second run reports zero changes, check-mode predicts the apply, outcomes match `rt.status` expectations. | M6.T2: ansible-lint joins the verification graph. |
@@ -82,3 +82,11 @@ release) follows the git-workflow release reference.
   audits report them as notes (F2/F5). M5.T1 also gains the EC-8
   boot-time interface bring-up check (cross-check finding RV1-R2-F2).
   Issue #5 body requires the same amendment before M5 executes.
+- 2026-06-12 (M3): validation phase p11 (DKMS package install plus
+  cross-kernel vermagic) lands as the M3.T2 permanent regression check,
+  following the M2 charter-amendment precedent; the Standing Plan
+  M9.T4 amendment stays scoped to the package-install and
+  Ansible-provisioning phases. The re-run matrix row "Any post-M3
+  change to the DKMS fragment" covers these concrete F4 surfaces:
+  templates/dkms.conf.in, debian/ethercat-dkms.dkms,
+  debian/debian-prebuild.sh.

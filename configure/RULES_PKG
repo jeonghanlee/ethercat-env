@@ -91,5 +91,12 @@ pkg.verify:
 	else \
 		printf "pkg.verify: SKIP - packaging toolchain absent; build verification is VM-phase only\n"; \
 	fi
+	$(QUIET)t="$$(sed 's/@MODULE_NAME@/ethercat/g;s/@MODULE_VERSION@/\#MODULE_VERSION\#/g' $(TOP)/templates/dkms.conf.in | grep -E '^(MAKE\[0\]|CLEAN)=')"; \
+	p="$$(grep -E '^(MAKE\[0\]|CLEAN)=' $(TOP)/debian/ethercat-dkms.dkms)"; \
+	if [ "$$t" = "$$p" ]; then \
+		printf "pkg.verify: OK - F4 overrides agree between template and package conf\n"; \
+	else \
+		printf "pkg.verify: FAIL - F4 override drift between templates/dkms.conf.in and debian/ethercat-dkms.dkms\n" >&2; exit 1; \
+	fi
 
 -include $(TOP)/configure/RULES_PKG.local

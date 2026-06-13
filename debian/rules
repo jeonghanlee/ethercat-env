@@ -1,11 +1,27 @@
 #!/usr/bin/make -f
-# debian/rules for the ethercat source package (release-1.0.0 cycle M2).
+# debian/rules for the ethercat source package (release-1.0.0 cycle M2/M3).
 # Userspace-only build: kernel modules are delivered via ethercat-dkms
 # (DKMS PRE_BUILD configures inside the DKMS tree), so the deb build
 # disables the kernel half entirely.
+
+include /usr/share/dpkg/pkg-info.mk
+
+DKMS_SRC_DIR := debian/ethercat-dkms/usr/src/ethercat-$(DEB_VERSION_UPSTREAM)
 
 %:
 	dh $@
 
 override_dh_auto_configure:
 	dh_auto_configure -- --disable-kernel
+
+# The DKMS source ships PRISTINE from the orig tarball beside the build
+# tree (the in-tree copy is configured and built by this point); the
+# orig prefix already matches the dh_dkms-computed /usr/src path. The
+# guard fails closed if patch classes ever activate, because the
+# extracted tree would then miss them (extraction must switch to the
+# patched tree before that becomes legal).
+execute_after_dh_install:
+	test ! -s debian/patches/series || { echo "ERROR: active patches present; pristine-orig DKMS extraction must apply them first" >&2; exit 1; }
+	mkdir -p debian/ethercat-dkms/usr/src
+	tar -xzf ../ethercat_$(DEB_VERSION_UPSTREAM).orig.tar.gz -C debian/ethercat-dkms/usr/src
+	install -m 0755 debian/debian-prebuild.sh $(DKMS_SRC_DIR)/debian-prebuild.sh

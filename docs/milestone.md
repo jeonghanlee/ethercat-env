@@ -36,16 +36,17 @@ runtime readiness checks, and field deployment prerequisites for Debian 13.
 
 ## Canonical Work Register
 
-Next session entry point: Release 1.0.0 cycle M3 (DKMS module package,
-issue #3) on branch `dev/release-1.0.0`. M1 and M2 are closed (2026-06-12,
-issues #1 and #2): `docs/delivery-model.md`, `configure/RULES_PKG`, and
-`debian/` are in place, with VM build evidence in `ethercat-env-validation`
-(`evidence/release-1.0.0/m2`). The pinned upstream ships no debian/
-directory (M2 entry verification, recorded). The cycle work order and
-verification subs are in the Release 1.0.0 Cycle section below; procedures
-are in `docs/testplan_1.0.0.md`. Milestones M1 through M10 are issues #1
-through #10 under GitHub milestone 1.0.0. R2-13 and Revision 1 M16 remain
-external hardware gates and inherit into the cycle unchanged.
+Next session entry point: Release 1.0.0 cycle M4 (userspace tools package,
+issue #4) on branch `dev/release-1.0.0`. M1 through M3 are closed
+(2026-06-12, issues #1-#3): delivery model, source package baseline, and
+the ethercat-dkms package (F4 carried into the package path, cross-kernel
+vermagic verified on a fresh VM) are in place; VM evidence lives in
+`ethercat-env-validation` (`evidence/release-1.0.0/m2`, `m3`). The cycle
+work order and verification subs are in the Release 1.0.0 Cycle section
+below; procedures are in `docs/testplan_1.0.0.md`. Milestones M1 through
+M10 are issues #1 through #10 under GitHub milestone 1.0.0. R2-13 and
+Revision 1 M16 remain external hardware gates and inherit into the cycle
+unchanged.
 
 The Release 1.0.0 cycle runs remote-authoritative: each milestone issue
 carries its verification checkbox list as the status source of truth and
@@ -305,9 +306,9 @@ them as notes (F5 precedent).
 | Packaging | M2 Debian source package baseline | Milestone | Closed (2026-06-12) | M1 | Issue #2 closed. `configure/RULES_PKG`, `debian/`; upstream ships no debian/ at the pin; cross-check ACCEPT by both reviewers (session rs20260612_015044). |
 | | M2.T1 Pinned-revision source package build on Debian 13 | Verification sub | Done | M2 | Fresh VM: in-VM orig matches ORIG_SHA256; dpkg-buildpackage -S and -b clean (evidence/release-1.0.0/m2). |
 | | M2.T2 Package build check joins the verification graph | Verification sub | Done | M2 | pkg.verify in verify.all, SKIP-gated; harness charter amended. |
-| Packaging | M3 DKMS module package | Milestone | Not started | M2 | Issue #3. |
-| | M3.T1 Install state and cross-kernel vermagic (F4 regression) | Verification sub | Not started | M3 | |
-| | M3.T2 Cross-kernel rebuild as permanent regression check | Verification sub | Not started | M3 | |
+| Packaging | M3 DKMS module package | Milestone | Closed (2026-06-12) | M2 | Issue #3 closed. `debian/ethercat-dkms.dkms` plus PRE_BUILD script; cross-check ACCEPT by both reviewers (session rs20260612_121927). |
+| | M3.T1 Install state and cross-kernel vermagic (F4 regression) | Verification sub | Done | M3 | Fresh VM: per-module vermagic matches on cloud and RT kernels; exactly-generic set (evidence/release-1.0.0/m3). |
+| | M3.T2 Cross-kernel rebuild as permanent regression check | Verification sub | Done | M3 | Validation phase p11 (permanent); testplan M3 row references it. |
 | Packaging | M4 Userspace tools package | Milestone | Not started | M2 | Issue #4. |
 | | M4.T1 Command path, loader resolution, uninstall residue | Verification sub | Not started | M4 | |
 | Packaging | M5 Host integration packaging | Milestone | Not started | M3, M4 | Issue #5. |
@@ -334,8 +335,8 @@ them as notes (F5 precedent).
 | | M11.T3 Standing plan executed with M9.T4 amendments | Verification sub | Not started | M11 | |
 
 Tally: 11 milestones (10 issue-tracked, 1 register-local gate) and 21
-verification subs; closed: 2 milestones (M1, M2), 3 subs (M1.T1, M2.T1,
-M2.T2). Entry point: M3.
+verification subs; closed: 3 milestones (M1, M2, M3), 5 subs (M1.T1,
+M2.T1, M2.T2, M3.T1, M3.T2). Entry point: M4.
 
 ## Profile Policy
 
@@ -411,13 +412,13 @@ host-configuration roles, acceptance-gated by the `ethercat-env-validation`
 phase harness. The work order M1 through M11 with verification subs is in
 the Release 1.0.0 Cycle section; procedures are in `docs/testplan_1.0.0.md`.
 Milestones M1 through M10 are issues #1 through #10 under GitHub milestone
-1.0.0. M1 and M2 are closed (2026-06-12, issues #1 and #2):
-`docs/delivery-model.md` records the delivery decisions;
-`configure/RULES_PKG` and `debian/` establish the source package baseline
-with VM build evidence preserved in `ethercat-env-validation`
-(`evidence/release-1.0.0/m2`). The pinned upstream ships no debian/
-directory. Next: M3 (issue #3), the DKMS module package carrying the F4
-fix.
+1.0.0. M1 through M3 are closed (2026-06-12, issues #1-#3): delivery
+model, source package baseline, and the ethercat-dkms package carrying
+the F4 fix into the package path (PRE_BUILD bootstrap from the pristine
+orig tree; cross-kernel vermagic verified on a fresh VM for the cloud and
+RT kernels). VM evidence: `ethercat-env-validation`
+(`evidence/release-1.0.0/m2`, `m3`). Next: M4 (issue #4), the userspace
+tools package.
 
 R2-13 and Revision 1 M16 remain external hardware gates (real adapter, slave
 chain, hardware reboot persistence, unload/reload, RT readiness, production

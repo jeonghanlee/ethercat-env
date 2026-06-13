@@ -1,0 +1,30 @@
+# EtherCAT master DKMS configuration (ethercat-dkms package, static).
+#
+# F4 (R2-12): the upstream top-level Makefile ignores KDIR (uses the
+# baked LINUX_SOURCE_DIR) and bakes abs_builddir, so both are forced as
+# make command-line overrides or cross-kernel builds escape the DKMS
+# tree and install stale modules. The abs_builddir literal assumes the
+# default dkms tree /var/lib/dkms; a relocated dkms_tree re-opens the
+# build escape and needs a regenerated conf (see README.Debian).
+#
+# The packaged source under /usr/src is unconfigured (extracted from
+# the pristine orig); debian-prebuild.sh owns bootstrap and configure
+# per target kernel.
+
+PACKAGE_NAME="ethercat"
+PACKAGE_VERSION="#MODULE_VERSION#"
+
+PRE_BUILD="debian-prebuild.sh ${kernelver}"
+
+MAKE[0]="make modules LINUX_SOURCE_DIR=/lib/modules/${kernelver}/build abs_builddir=/var/lib/dkms/ethercat/#MODULE_VERSION#/build"
+CLEAN="make clean LINUX_SOURCE_DIR=/lib/modules/${kernelver}/build abs_builddir=/var/lib/dkms/ethercat/#MODULE_VERSION#/build"
+
+BUILT_MODULE_NAME[0]="ec_master"
+BUILT_MODULE_LOCATION[0]="master"
+DEST_MODULE_LOCATION[0]="/kernel/drivers/ethercat"
+
+BUILT_MODULE_NAME[1]="ec_generic"
+BUILT_MODULE_LOCATION[1]="devices"
+DEST_MODULE_LOCATION[1]="/kernel/drivers/ethercat"
+
+AUTOINSTALL="yes"

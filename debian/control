@@ -2,7 +2,7 @@ Source: ethercat
 Section: admin
 Priority: optional
 Maintainer: Jeong Han Lee <jeonghan.lee@gmail.com>
-Build-Depends: debhelper-compat (= 13), pkgconf, autoconf, automake, libtool
+Build-Depends: debhelper-compat (= 13), dh-sequence-dkms, pkgconf, autoconf, automake, libtool
 Standards-Version: 4.7.0
 Rules-Requires-Root: no
 Homepage: https://gitlab.com/etherlab.org/ethercat
@@ -19,7 +19,7 @@ Description: EtherCAT master userspace command and libraries
 
 Package: ethercat-dkms
 Architecture: all
-Depends: ${misc:Depends}
+Depends: ${misc:Depends}, autoconf, automake, libtool, pkgconf
 Description: EtherCAT master kernel modules (DKMS)
  DKMS source for the IgH EtherCAT master kernel modules (ec_master and
  the enabled device modules, generic profile). Kernel updates rebuild
