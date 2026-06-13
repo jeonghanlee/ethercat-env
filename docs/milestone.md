@@ -418,14 +418,15 @@ host-configuration roles, acceptance-gated by the `ethercat-env-validation`
 phase harness. The work order M1 through M11 with verification subs is in
 the Release 1.0.0 Cycle section; procedures are in `docs/testplan_1.0.0.md`.
 Milestones M1 through M10 are issues #1 through #10 under GitHub milestone
-1.0.0. M1 through M3 are closed (2026-06-12, issues #1-#3): delivery
-model, source package baseline, and the ethercat-dkms package carrying
-the F4 fix into the package path (PRE_BUILD bootstrap from the pristine
-orig tree; cross-kernel vermagic verified on a fresh VM for the cloud and
-RT kernels). VM evidence: `ethercat-env-validation`
-(`evidence/release-1.0.0/m2`, `m3`). Next: M5 (issue #5), host
-integration packaging; its entry precondition is the issue #5 body
-amendment for the U3/U4 decisions (carry-forward from M1).
+1.0.0. M1 through M4 are closed (2026-06-12/13, issues #1-#4): delivery
+model, source package baseline, the ethercat-dkms package carrying the
+F4 fix into the package path (cross-kernel vermagic verified on a fresh
+VM for the cloud and RT kernels), and the userspace tools split
+(libethercat1 / libethercat-dev / ethercat-tools). VM evidence:
+`ethercat-env-validation` (`evidence/release-1.0.0/m2`, `m3`, `m4`).
+Next: M5 (issue #5), host integration packaging; its entry precondition
+is the issue #5 body amendment for the U3/U4 decisions (carry-forward
+from M1).
 
 R2-13 and Revision 1 M16 remain external hardware gates (real adapter, slave
 chain, hardware reboot persistence, unload/reload, RT readiness, production
