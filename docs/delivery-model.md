@@ -54,7 +54,7 @@ Source package `ethercat`, built from the pinned upstream revision plus
 | Role | Scope | Key decisions |
 | --- | --- | --- |
 | `rt_host` | RULES_RT semantics: RT kernel and headers (RT-1), realtime group and limits (RT-3), GRUB parameters (RT-4), clock source report (RT-5), service policy (RT-6), tuned report (RT-7); RT-2 (kernel select) and RT-8 (readiness) are covered by the `make rt.status` oracle, not role tasks (cycle M6) | `ansible/roles/rt_host`, vars `rt_host_*` mirror the active CONFIG_RT policy; no GRUB boot-default change (D2); tuned report-only by default (opt-in apply); check-mode accurate; outcomes match `rt.status`. RT-9/RT-10 are dev-only, not in the role. |
-| `ethercat_master` | Installs the cycle packages, renders and deploys `ethercat.conf` from inventory variables as the sole /etc owner, manages service state (cycle M7) | Boot-time interface preparation is package-path behavior (unit + ethercatctl + rendered UPDOWN entries); the role owns rendering correctness. |
+| `ethercat_master` | Installs the cycle packages (ethercat-host, pulling dkms+tools), renders `/etc/ethercat.conf` from inventory variables as the sole /etc owner, enables and starts the service (cycle M7) | `ansible/roles/ethercat_master`, vars `ethercat_master_*`; a bound device is required (fail-closed, F3); device drivers are bare names (ethercatctl prepends ec_). Boot-time interface bring-up is package-path behavior (unit + ethercatctl + rendered UPDOWN); the role owns rendering correctness (EC-8). `ansible/playbooks/site.yml` composes rt_host + ethercat_master. |
 
 ## EtherCAT Destinations
 

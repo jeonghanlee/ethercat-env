@@ -1,0 +1,31 @@
+---
+- name: Assert a master device is set (fail closed, F3)
+  ansible.builtin.assert:
+    that:
+      - ethercat_master_device | length > 0
+    fail_msg: >-
+      ethercat_master_device is empty; refusing to render an unbound
+      master configuration (F3). Set it to the master interface name
+      or MAC.
+
+- name: Install the EtherCAT host packages
+  ansible.builtin.apt:
+    name: "{{ ethercat_master_packages }}"
+    state: present
+    update_cache: true
+
+- name: Render the EtherCAT master configuration
+  ansible.builtin.template:
+    src: ethercat.conf.j2
+    dest: "{{ ethercat_master_conf }}"
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart ethercat master
+
+- name: Enable and start the EtherCAT master service
+  ansible.builtin.systemd_service:
+    name: "{{ ethercat_master_service }}"
+    enabled: true
+    state: started
+  when: ethercat_master_start | bool

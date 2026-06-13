@@ -1,0 +1,8 @@
+---
+# Apply the ethercat_master role alone (unit testing / a host whose RT
+# configuration is managed separately).
+- name: Configure the EtherCAT master
+  hosts: ethercat_masters
+  become: true
+  roles:
+    - ethercat_master

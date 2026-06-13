@@ -1,0 +1,9 @@
+{{ ansible_managed | comment }}
+# EtherCAT master configuration, rendered by the ethercat_master role
+# (cycle M7). ethercatctl sources this file as shell, so every value is
+# quoted and the module list is space-joined.
+
+MASTER0_DEVICE="{{ ethercat_master_device }}"
+MASTER0_BACKUP="{{ ethercat_master_backup }}"
+DEVICE_MODULES="{{ ethercat_master_device_modules | join(' ') }}"
+UPDOWN_INTERFACES="{{ ethercat_master_updown }}"

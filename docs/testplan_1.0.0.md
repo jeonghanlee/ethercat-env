@@ -44,7 +44,7 @@ adding package-install and Ansible-provisioning phases.
 | M4 Userspace tools package | M4.T1 (validation phase p12): `ethercat` command resolves on PATH, `libethercat1` resolves via the loader, uninstall leaves no residue; supplementary dev evidence: `libethercat-dev` installs and `pkg-config --modversion libethercat` resolves. | None. |
 | M5 Host integration packaging | M5.T1 (amended 2026-06-12, M1): the `ethercat` group is sysusers.d-declared and exists before udev rule load (F2); no `/etc/ethercat.conf` is shipped - the reference default lives outside /etc and the unit fails closed when the config is absent (F3); the unit path brings the configured UPDOWN interfaces up at service start (EC-8); service and udev states report correctly; purge retains system groups and audits report them as notes, ending clean (F5 semantics). M5.T3: re-run M3.T1 and M4.T1 per the dependency matrix. | M5.T2 (validation phase p13): install and purge residue checks land as a permanent regression phase. |
 | M6 Ansible role: RT host configuration | M6.T1 (validation phase p14): role applies on a clean host, a second run reports zero changes, check-mode predicts the apply, the GRUB boot default is unchanged (D2), outcomes match `rt.status` expectations. | M6.T2: ansible-lint (profile basic) joins the verification graph via SKIP-gated `verify.ansible-lint`; M8 is the umbrella that runs lintian + ansible-lint + check-mode together. |
-| M7 Ansible role: EtherCAT master host | M7.T1: role installs the cycle packages, deploys the runtime configuration with a bound master device (F3 regression), and reaches an active service. M7.T3: re-run M6.T1 per the dependency matrix. | None. |
+| M7 Ansible role: EtherCAT master host | M7.T1 (validation phase p15): role installs the cycle packages, deploys `/etc/ethercat.conf` with a bound master device (F3 regression) and a rendered UPDOWN (EC-8), reaches an active service with the device module attached, and is idempotent; an empty device fails closed. M7.T3: re-run rt_host via site.yml - an idempotent re-apply (changed=0) under the M7 inventory/layout per the dependency matrix; the rt_host check-mode and rt.status-parity facets were authoritatively verified at M6 (p14) and are not re-exercised here. | None (p15 is the permanent M7 phase). |
 | M8 Repository-local verification | M8.T1: extended `verify.all` passes with lintian, ansible-lint, and check-mode wired in. | M8.T2: the wiring itself is the permanent suite addition. |
 | M9 VM acceptance | M9.T1: new harness phases pass first-try on a fresh Debian 13 VM with outcome parity against the p1-p9 source-build path. | M9.T4: standing harness amended with package-install and Ansible-provisioning phases. |
 | M10 Documentation refresh | M10.T1: install, operation, and removal documents match implemented package and role behavior. | None. |
@@ -57,6 +57,7 @@ adding package-install and Ansible-provisioning phases.
 | M5 lands or later changes maintainer scripts | M3.T1, M4.T1 | `debian/` control files and maintainer scripts |
 | M7 lands or later changes role layout | M6.T1 | Role layout, inventory, and variable model |
 | Any post-M3 change to the DKMS fragment | M3.T1 | `dkms.conf` template and package fragment (F4 surface) |
+| Any change to the ethercat.conf shape | M7.T1 (role render) and the wrapper runtime.lint | `templates/ethercat.conf.in` and `ansible/roles/ethercat_master/templates/ethercat.conf.j2` (parallel renderers of the same config) |
 | M8 or M9 findings force packaging or role changes | T1 of every milestone whose surface the change touches | Finding-specific |
 
 ## Release Gate
@@ -117,3 +118,11 @@ release) follows the git-workflow release reference.
   (no double-count). Validation phase p14 is the first Ansible-
   provisioning phase (the M9.T4-scoped class), landing permanent now
   per the p11/p13 precedent.
+- 2026-06-13 (M7): ethercat_master Ansible role under
+  ansible/roles/ethercat_master (vars ethercat_master_*) - installs
+  ethercat-host, renders /etc/ethercat.conf with a bound device
+  (fail-closed, F3) and a quoted shell-sourced shape, starts the
+  service. ansible/playbooks/site.yml composes rt_host +
+  ethercat_master (the end-to-end deliverable). New re-run matrix row
+  covers the parallel ethercat.conf renderers (.in and the role .j2).
+  Validation phase p15 applies site.yml and is the permanent M7 phase.

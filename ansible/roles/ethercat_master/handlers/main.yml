@@ -1,0 +1,6 @@
+---
+- name: Restart ethercat master
+  ansible.builtin.systemd_service:
+    name: "{{ ethercat_master_service }}"
+    state: restarted
+  when: ethercat_master_start | bool

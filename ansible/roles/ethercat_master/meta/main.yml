@@ -1,0 +1,16 @@
+---
+galaxy_info:
+  role_name: ethercat_master
+  namespace: ethercat_env
+  author: Jeong Han Lee
+  description: EtherCAT master host provisioning for the Debian 13 environment
+  license: GPL-2.0-or-later
+  min_ansible_version: "2.15"
+  platforms:
+    - name: Debian
+      versions:
+        - trixie
+  galaxy_tags:
+    - ethercat
+    - debian
+dependencies: []

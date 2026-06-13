@@ -36,17 +36,17 @@ runtime readiness checks, and field deployment prerequisites for Debian 13.
 
 ## Canonical Work Register
 
-Next session entry point: Release 1.0.0 cycle M7 (Ansible role: EtherCAT
-master host, issue #7) on branch `dev/release-1.0.0`. M1 through M6 are
-closed (2026-06-12/13, issues #1-#6): delivery model, source package
+Next session entry point: Release 1.0.0 cycle M8 (repository-local
+verification, issue #8) on branch `dev/release-1.0.0`. M1 through M7 are
+closed (2026-06-12/13, issues #1-#7): delivery model, source package
 baseline, ethercat-dkms, the userspace tools split, host integration
-(ethercat-host), and the rt_host Ansible role (RT kernel/limits/GRUB/
-clock/service/tuned, idempotent and check-mode verified on a fresh VM).
-VM evidence lives in `ethercat-env-validation` (`evidence/release-1.0.0/
-m2`-`m6`). M7 is the end-to-end provisioning role (installs the cycle
-packages, deploys the runtime config, brings the service up) and depends
-on M5 and M6. The cycle work order and verification subs are in the
-Release 1.0.0 Cycle section below; procedures are in
+(ethercat-host), the rt_host Ansible role, and the ethercat_master
+end-to-end provisioning role (site.yml composes both; bound device,
+active service, idempotence verified on a fresh VM). VM evidence lives
+in `ethercat-env-validation` (`evidence/release-1.0.0/m2`-`m7`). M8 is
+the umbrella that wires lintian + ansible-lint + check-mode into
+`verify.all` (depends on M2-M7). The cycle work order and verification
+subs are in the Release 1.0.0 Cycle section below; procedures are in
 `docs/testplan_1.0.0.md`. Milestones M1 through M10 are issues #1 through
 #10 under GitHub milestone 1.0.0. R2-13 and Revision 1 M16 remain
 external hardware gates and inherit into the cycle unchanged.
@@ -326,9 +326,9 @@ re-review, adding `libethercat1` (runtime library) and `libethercat-dev`
 | Ansible | M6 Ansible role: RT host configuration | Milestone | Closed (2026-06-13) | M1 | Issue #6 closed. `ansible/roles/rt_host`; cross-check ACCEPT by both reviewers (session rs20260613_021435). |
 | | M6.T1 Idempotent apply, check-mode accuracy, rt.status outcome parity | Verification sub | Done | M6 | Fresh VM (p14): check-mode predicts, second run changed=0, GRUB default unchanged (D2), rt.status parity (evidence/release-1.0.0/m6). |
 | | M6.T2 ansible-lint joins the verification graph | Verification sub | Done | M6 | verify.ansible-lint SKIP-gated in verify.all; p14 ran ansible-lint clean (production profile passed). |
-| Ansible | M7 Ansible role: EtherCAT master host | Milestone | Not started | M5, M6 | Issue #7. |
-| | M7.T1 Package install, bound master device (F3 regression), active service | Verification sub | Not started | M7 | |
-| | M7.T3 Re-run M6.T1 per the dependency matrix | Verification sub | Not started | M7 | |
+| Ansible | M7 Ansible role: EtherCAT master host | Milestone | Closed (2026-06-13) | M5, M6 | Issue #7 closed. `ansible/roles/ethercat_master` + `site.yml`; cross-check ACCEPT by both reviewers (session rs20260613_132255). |
+| | M7.T1 Package install, bound master device (F3 regression), active service | Verification sub | Done | M7 | Fresh VM (p15): site.yml binds MASTER0_DEVICE, renders UPDOWN, starts the service, ec_generic loaded, fail-closed negative (evidence/release-1.0.0/m7). |
+| | M7.T3 Re-run M6.T1 per the dependency matrix | Verification sub | Done | M7 | site.yml second apply idempotent (rt_host + ethercat_master); rt_host check-mode/rt.status facets verified at M6/p14. |
 | Verification | M8 Repository-local verification | Milestone | Not started | M2-M7 | Issue #8. |
 | | M8.T1 Extended verify.all passes with lintian, ansible-lint, check-mode | Verification sub | Not started | M8 | |
 | | M8.T2 Verification wiring as permanent suite addition | Verification sub | Not started | M8 | |
@@ -343,9 +343,9 @@ re-review, adding `libethercat1` (runtime library) and `libethercat-dev`
 | | M11.T3 Standing plan executed with M9.T4 amendments | Verification sub | Not started | M11 | |
 
 Tally: 11 milestones (10 issue-tracked, 1 register-local gate) and 21
-verification subs; closed: 6 milestones (M1, M2, M3, M4, M5, M6), 11
-subs (M1.T1, M2.T1, M2.T2, M3.T1, M3.T2, M4.T1, M5.T1, M5.T2, M5.T3,
-M6.T1, M6.T2). Entry point: M7.
+verification subs; closed: 7 milestones (M1-M7), 13 subs (M1.T1,
+M2.T1, M2.T2, M3.T1, M3.T2, M4.T1, M5.T1, M5.T2, M5.T3, M6.T1, M6.T2,
+M7.T1, M7.T3). Entry point: M8.
 
 ## Profile Policy
 
@@ -421,16 +421,18 @@ host-configuration roles, acceptance-gated by the `ethercat-env-validation`
 phase harness. The work order M1 through M11 with verification subs is in
 the Release 1.0.0 Cycle section; procedures are in `docs/testplan_1.0.0.md`.
 Milestones M1 through M10 are issues #1 through #10 under GitHub milestone
-1.0.0. M1 through M6 are closed (2026-06-12/13, issues #1-#6): delivery
+1.0.0. M1 through M7 are closed (2026-06-12/13, issues #1-#7): delivery
 model, source package baseline, the ethercat-dkms package (F4 fix,
 cross-kernel vermagic verified), the userspace tools split
 (libethercat1 / libethercat-dev / ethercat-tools), host integration
 (ethercat-host: systemd unit, udev rule, sysusers.d group, fail-closed
-config; F2/F3/F5 and EC-8 verified), and the rt_host Ansible role
-(idempotent, check-mode and rt.status parity verified, D2 honored). VM
-evidence: `ethercat-env-validation` (`evidence/release-1.0.0/m2` through
-`m6`). Next: M7 (issue #7), the EtherCAT master host Ansible role -
-end-to-end provisioning, depending on M5 and M6.
+config; F2/F3/F5 and EC-8 verified), the rt_host Ansible role
+(idempotent, check-mode and rt.status parity verified, D2 honored), and
+the ethercat_master end-to-end role (site.yml composes both; bound
+device, active service, idempotence verified). VM evidence:
+`ethercat-env-validation` (`evidence/release-1.0.0/m2` through `m7`).
+Next: M8 (issue #8), repository-local verification - the umbrella that
+wires lintian + ansible-lint + check-mode into verify.all.
 
 R2-13 and Revision 1 M16 remain external hardware gates (real adapter, slave
 chain, hardware reboot persistence, unload/reload, RT readiness, production
