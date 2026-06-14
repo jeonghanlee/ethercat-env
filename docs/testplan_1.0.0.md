@@ -29,10 +29,39 @@ preserved in the `ethercat-env-validation` repository.
 ## Standing Plan
 
 The version-independent acceptance vehicle is the `ethercat-env-validation`
-phase harness (phases p1 through p9). It runs identically at every release
-gate. Its expected results change only through a T4 amendment by the
-milestone that causes the change; this cycle amends it once (M9.T4) by
-adding package-install and Ansible-provisioning phases.
+phase harness. It runs identically at every release gate. Its expected
+results change only through a T4 amendment by the milestone that causes
+the change; this cycle made that single amendment at M9.T4.
+
+Two acceptance vehicles now exist, at outcome parity:
+
+1. Source-build path (p1 through p9): build from the pinned upstream
+   source, install, dkms, runtime, systemd/udev, rt, post-reboot,
+   removal (the R2-12 vehicle).
+2. Package/Ansible path (M9.T4 amendment, in effect): package-install
+   phases (p10 build, p11 dkms, p12 tools, p13 host) and
+   Ansible-provisioning phases (p14 rt_host, p15 ethercat_master via
+   site.yml), with the end-to-end acceptance run p17 (build, provision,
+   pre-reboot parity) then a host-driven reboot then p18 (post-reboot
+   parity, removal). The lint/check gate p16 is not an acceptance
+   phase. The package/Ansible path reaches the same operational
+   end-state as the source path by a different route.
+
+### Source-vs-Package Acceptance Parity
+
+Parity is the operational end-state, not script identity (the master
+service unit differs by route: source `epics-ethercat`, package
+`ethercat.service`):
+
+| p1-p9 (source) | package/Ansible end-state (p17/p18) |
+| --- | --- |
+| p3 install / command | ethercat CLI on PATH (self-contained; libethercat1 not installed - no in-cycle consumer) |
+| p4 dkms | ec_master + ec_generic loaded; dkms status installed |
+| p5 runtime | /etc/ethercat.conf bound MASTER0_DEVICE |
+| p6 systemd/udev | service active; /dev/EtherCAT0 group ethercat |
+| p7 rt | RT kernel installed; realtime group, limits, GRUB param, irqbalance masked, rt.status |
+| p8 post-reboot | after reboot: service up, master present, dkms intact, no manual repair |
+| p9 removal | purge: package-path inline residue audit clean (group retained as a note, U4) |
 
 ## Per-Milestone Verification
 
@@ -46,7 +75,7 @@ adding package-install and Ansible-provisioning phases.
 | M6 Ansible role: RT host configuration | M6.T1 (validation phase p14): role applies on a clean host, a second run reports zero changes, check-mode predicts the apply, the GRUB boot default is unchanged (D2), outcomes match `rt.status` expectations. | M6.T2: ansible-lint (profile basic) joins the verification graph via SKIP-gated `verify.ansible-lint`; M8 is the umbrella that runs lintian + ansible-lint + a playbook syntax-check together (real ansible --check stays in the role phases p14/p15). |
 | M7 Ansible role: EtherCAT master host | M7.T1 (validation phase p15): role installs the cycle packages, deploys `/etc/ethercat.conf` with a bound master device (F3 regression) and a rendered UPDOWN (EC-8), reaches an active service with the device module attached, and is idempotent; an empty device fails closed. M7.T3: re-run rt_host via site.yml - an idempotent re-apply (changed=0) under the M7 inventory/layout per the dependency matrix; the rt_host check-mode and rt.status-parity facets were authoritatively verified at M6 (p14) and are not re-exercised here. | None (p15 is the permanent M7 phase). |
 | M8 Repository-local verification (validation phase p16) | M8.T1: extended `verify.all` passes with lintian (`verify.lintian`, `--fail-on error` on the .changes), ansible-lint (`verify.ansible-lint`, from M6), and a playbook syntax-check (`verify.syntax-check`) wired in - all members REAL on the VM. | M8.T2: the verify.all membership is the permanent suite addition. |
-| M9 VM acceptance | M9.T1: new harness phases pass first-try on a fresh Debian 13 VM with outcome parity against the p1-p9 source-build path. | M9.T4: standing harness amended with package-install and Ansible-provisioning phases. |
+| M9 VM acceptance | M9.T1 (validation phases p17 + host reboot + p18): the package/Ansible acceptance run passes first-try on a fresh Debian 13 VM at outcome parity with the p1-p9 source-build path (see Source-vs-Package Acceptance Parity). | M9.T4: the Standing Plan is amended (in effect) with the package-install and Ansible-provisioning phases as the second acceptance vehicle. |
 | M10 Documentation refresh | M10.T1: install, operation, and removal documents match implemented package and role behavior. | None. |
 | M11 Release gate 1.0.0 | M11.T1: cycle batch re-run (see Release Gate). M11.T3: standing plan executed with M9.T4 amendments in effect. | M11.T2: full automated suites. |
 
@@ -136,3 +165,13 @@ release) follows the git-workflow release reference.
   with every lint/check member REAL (the M8.T1 evidence); the actual
   lintian override set is recorded in delivery-model after p16. p16 is
   the lint/check gate, distinct from the M9 acceptance phases.
+- 2026-06-13 (M9): the standing plan now records two acceptance
+  vehicles at outcome parity - the p1-p9 source-build path and the
+  package/Ansible path (p10-p15 plus the p17/reboot/p18 acceptance
+  run). This is the single M9.T4 amendment of the phase class the M3 and
+  M6 entries forward-referenced (and that M4/M5/M7 contributed phases
+  to); p16 (lint/check gate) is not an acceptance phase.
+  Validation phases p17-acceptance and p18-acceptance-post drive the
+  fresh-VM acceptance with a host-driven reboot between them. The
+  Source-vs-Package Acceptance Parity table (Standing Plan section) is
+  the durable parity record.

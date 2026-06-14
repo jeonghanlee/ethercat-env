@@ -36,20 +36,21 @@ runtime readiness checks, and field deployment prerequisites for Debian 13.
 
 ## Canonical Work Register
 
-Next session entry point: Release 1.0.0 cycle M9 (VM acceptance, issue
-#9) on branch `dev/release-1.0.0`. M1 through M8 are closed
-(2026-06-12/13, issues #1-#8): delivery model, source package baseline,
-ethercat-dkms, the userspace tools split, host integration, the rt_host
-and ethercat_master Ansible roles, and the verification umbrella
-(verify.all now runs lintian + ansible-lint + a playbook syntax-check,
-fresh-VM verified). VM evidence lives in `ethercat-env-validation`
-(`evidence/release-1.0.0/m2`-`m8`). M9 extends the standing harness with
-package-install and Ansible-provisioning acceptance phases at p1-p9
-outcome parity (depends on M8). The cycle work order and verification
-subs are in the Release 1.0.0 Cycle section below; procedures are in
-`docs/testplan_1.0.0.md`. Milestones M1 through M10 are issues #1 through
-#10 under GitHub milestone 1.0.0. R2-13 and Revision 1 M16 remain
-external hardware gates and inherit into the cycle unchanged.
+Next session entry point: Release 1.0.0 cycle M10 (documentation
+refresh, issue #10) on branch `dev/release-1.0.0`. M1 through M9 are
+closed (2026-06-12/13, issues #1-#9): delivery model, source package
+baseline, ethercat-dkms, the userspace tools split, host integration,
+the rt_host and ethercat_master Ansible roles, the verification
+umbrella, and VM acceptance (the package/Ansible path reaches p1-p9
+outcome parity on a fresh VM, post-reboot persistence included). VM
+evidence lives in `ethercat-env-validation` (`evidence/release-1.0.0/
+m2`-`m9`). M10 refreshes the install/operation/removal documents to the
+package and role delivery model (depends on M1-M9). The cycle work
+order and verification subs are in the Release 1.0.0 Cycle section
+below; procedures are in `docs/testplan_1.0.0.md`. Milestones M1 through
+M10 are issues #1 through #10 under GitHub milestone 1.0.0. R2-13 and
+Revision 1 M16 remain external hardware gates and inherit into the cycle
+unchanged.
 
 The Release 1.0.0 cycle runs remote-authoritative: each milestone issue
 carries its verification checkbox list as the status source of truth and
@@ -332,9 +333,9 @@ re-review, adding `libethercat1` (runtime library) and `libethercat-dev`
 | Verification | M8 Repository-local verification | Milestone | Closed (2026-06-13) | M2-M7 | Issue #8 closed. verify.syntax-check + verify.lintian wired into verify.all; cross-check ACCEPT by both reviewers (session rs20260613_151250). |
 | | M8.T1 Extended verify.all passes with lintian, ansible-lint, syntax-check | Verification sub | Done | M8 | Fresh VM (p16): lintian --fail-on error clean, verify.all green with all lint/check members real (evidence/release-1.0.0/m8). |
 | | M8.T2 Verification wiring as permanent suite addition | Verification sub | Done | M8 | verify.all membership (verify.ansible-lint, verify.syntax-check, verify.lintian) is permanent. |
-| Verification | M9 VM acceptance | Milestone | Not started | M8 | Issue #9. |
-| | M9.T1 New harness phases pass first-try with p1-p9 outcome parity | Verification sub | Not started | M9 | |
-| | M9.T4 Standing harness amended with package-install and Ansible phases | Verification sub | Not started | M9 | |
+| Verification | M9 VM acceptance | Milestone | Closed (2026-06-13) | M8 | Issue #9 closed. p17/p18 acceptance phases; cross-check ACCEPT by both reviewers (session rs20260613_161827). |
+| | M9.T1 New harness phases pass first-try with p1-p9 outcome parity | Verification sub | Done | M9 | Fresh VM: p17 pre-reboot parity p3-p7, host reboot, p18 post-reboot service active + purge clean (evidence/release-1.0.0/m9). |
+| | M9.T4 Standing harness amended with package-install and Ansible-provisioning phases | Verification sub | Done | M9 | Standing Plan records two acceptance vehicles at outcome parity (testplan). |
 | Documentation | M10 Documentation refresh | Milestone | Not started | M1-M9 | Issue #10. |
 | | M10.T1 Install, operation, removal documents match implemented behavior | Verification sub | Not started | M10 | |
 | Gate | M11 Release gate 1.0.0 | Release gate (register-local) | Not started | M1-M10 | Gates merge to master, tag 1.0.0, GitHub release. |
@@ -343,9 +344,9 @@ re-review, adding `libethercat1` (runtime library) and `libethercat-dev`
 | | M11.T3 Standing plan executed with M9.T4 amendments | Verification sub | Not started | M11 | |
 
 Tally: 11 milestones (10 issue-tracked, 1 register-local gate) and 21
-verification subs; closed: 8 milestones (M1-M8), 15 subs (M1.T1,
+verification subs; closed: 9 milestones (M1-M9), 17 subs (M1.T1,
 M2.T1, M2.T2, M3.T1, M3.T2, M4.T1, M5.T1, M5.T2, M5.T3, M6.T1, M6.T2,
-M7.T1, M7.T3, M8.T1, M8.T2). Entry point: M9.
+M7.T1, M7.T3, M8.T1, M8.T2, M9.T1, M9.T4). Entry point: M10.
 
 ## Profile Policy
 
@@ -421,19 +422,21 @@ host-configuration roles, acceptance-gated by the `ethercat-env-validation`
 phase harness. The work order M1 through M11 with verification subs is in
 the Release 1.0.0 Cycle section; procedures are in `docs/testplan_1.0.0.md`.
 Milestones M1 through M10 are issues #1 through #10 under GitHub milestone
-1.0.0. M1 through M8 are closed (2026-06-12/13, issues #1-#8): delivery
+1.0.0. M1 through M9 are closed (2026-06-12/13, issues #1-#9): delivery
 model, source package baseline, the ethercat-dkms package (F4 fix,
 cross-kernel vermagic verified), the userspace tools split
 (libethercat1 / libethercat-dev / ethercat-tools), host integration
 (ethercat-host: systemd unit, udev rule, sysusers.d group, fail-closed
 config; F2/F3/F5 and EC-8 verified), the rt_host and ethercat_master
 Ansible roles (site.yml composes both; idempotent, bound device, active
-service verified), and the verification umbrella (verify.all runs
-lintian + ansible-lint + a playbook syntax-check, all real on a fresh
-VM). VM evidence: `ethercat-env-validation` (`evidence/release-1.0.0/m2`
-through `m8`). Next: M9 (issue #9), VM acceptance - extend the standing
-harness with package-install and Ansible-provisioning phases at p1-p9
-outcome parity.
+service verified), the verification umbrella (verify.all runs lintian +
+ansible-lint + a playbook syntax-check), and VM acceptance (the
+package/Ansible path reaches p1-p9 outcome parity on a fresh VM,
+post-reboot persistence included). VM evidence:
+`ethercat-env-validation` (`evidence/release-1.0.0/m2` through `m9`).
+Next: M10 (issue #10), documentation refresh - align the
+install/operation/removal documents with the package and role delivery
+model.
 
 R2-13 and Revision 1 M16 remain external hardware gates (real adapter, slave
 chain, hardware reboot persistence, unload/reload, RT readiness, production
