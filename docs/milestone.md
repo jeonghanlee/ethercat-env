@@ -351,6 +351,16 @@ verification subs; closed: 10 milestones (M1-M10), 18 subs (M1.T1,
 M2.T1, M2.T2, M3.T1, M3.T2, M4.T1, M5.T1, M5.T2, M5.T3, M6.T1, M6.T2,
 M7.T1, M7.T3, M8.T1, M8.T2, M9.T1, M9.T4, M10.T1). Entry point: M11.
 
+Incidental in-cycle fix (not an M-number work-order item): GitHub issue
+#11 (Pin upstream clone to HTTPS against global insteadOf rewrites;
+label bug; milestone 1.0.0; closed) is an out-of-band fix made during
+the cycle, separate from the cycle M-numbers and from the register-local
+M11 release gate (which shares the number by coincidence and carries no
+GitHub issue). The fix is a repository-owned longest-prefix HTTPS
+insteadOf pin (GIT_HTTPS_PIN in `configure/RELEASE`), documented in
+`docs/install.md` and `docs/architecture.md`. GitHub milestone 1.0.0
+therefore carries 11 closed issues (#1-#10 plus the incidental #11).
+
 ## Profile Policy
 
 The default profile should remain `generic` unless a native NIC profile is
