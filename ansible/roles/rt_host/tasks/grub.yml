@@ -1,0 +1,20 @@
+---
+- name: Back up the GRUB defaults once
+  ansible.builtin.copy:
+    src: "{{ rt_host_grub_file }}"
+    dest: "{{ rt_host_grub_backup }}"
+    remote_src: true
+    force: false
+    owner: root
+    group: root
+    mode: "0644"
+
+# Append each RT parameter only when it is not already inside the
+# variable value (negative lookahead), never clobbering site params.
+- name: Append RT GRUB parameters when absent
+  ansible.builtin.replace:
+    path: "{{ rt_host_grub_file }}"
+    regexp: '^({{ rt_host_grub_variable }}="(?:(?!{{ item | regex_escape }}).)*)"[ \t]*$'
+    replace: '\1 {{ item }}"'
+  loop: "{{ rt_host_grub_params }}"
+  notify: Update grub

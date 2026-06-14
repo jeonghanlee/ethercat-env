@@ -1,0 +1,55 @@
+#!/usr/bin/make -f
+# debian/rules for the ethercat source package (release-1.0.0 cycle M2/M3/M5).
+# Userspace-only build: kernel modules are delivered via ethercat-dkms
+# (DKMS PRE_BUILD configures inside the DKMS tree), so the deb build
+# disables the kernel half entirely. --without-systemdsystemunitdir keeps
+# upstream from installing a competing systemd unit; ethercat-host ships
+# the only unit (debian/ethercat-host.ethercat.service).
+
+include /usr/share/dpkg/pkg-info.mk
+
+DKMS_SRC_DIR := debian/ethercat-dkms/usr/src/ethercat-$(DEB_VERSION_UPSTREAM)
+
+# dh_installsysusers is auto-sequenced only in compat >= 14; enable it
+# explicitly for compat 13 so the ethercat-host sysusers.d group lands.
+%:
+	dh $@ --with installsysusers
+
+override_dh_auto_configure:
+	dh_auto_configure -- --disable-kernel --without-systemdsystemunitdir
+
+# Debian practice: drop the libtool archive; nothing in this package set
+# consumes it and lintian flags it. Move the upstream-built
+# /etc/ethercat.conf out of /etc and into the ethercat-host reference
+# example (U3: no shipped /etc config; the move consumes the original so
+# dh_missing --fail-missing stays satisfied).
+execute_after_dh_auto_install:
+	rm -f debian/tmp/usr/lib/*/libethercat.la
+	mkdir -p debian/tmp/usr/share/doc/ethercat-host/examples
+	mv debian/tmp/etc/ethercat.conf debian/tmp/usr/share/doc/ethercat-host/examples/ethercat.conf
+
+# ethercat.service is enabled but not started on install: starting needs
+# the live /etc/ethercat.conf (fail-closed) and master hardware.
+override_dh_installsystemd:
+	dh_installsystemd --no-start --name=ethercat
+
+# Install the udev rule as 99-ethercat.rules with the reload trigger.
+override_dh_installudev:
+	dh_installudev --priority=99 --name=ethercat
+
+# Fail the build if any installed file is neither claimed by a package
+# nor listed in debian/not-installed (build-enforced no-residue).
+override_dh_missing:
+	dh_missing --fail-missing
+
+# The DKMS source ships PRISTINE from the orig tarball beside the build
+# tree (the in-tree copy is configured and built by this point); the
+# orig prefix already matches the dh_dkms-computed /usr/src path. The
+# guard fails closed if patch classes ever activate, because the
+# extracted tree would then miss them (extraction must switch to the
+# patched tree before that becomes legal).
+execute_after_dh_install:
+	test ! -s debian/patches/series || { echo "ERROR: active patches present; pristine-orig DKMS extraction must apply them first" >&2; exit 1; }
+	mkdir -p debian/ethercat-dkms/usr/src
+	tar -xzf ../ethercat_$(DEB_VERSION_UPSTREAM).orig.tar.gz -C debian/ethercat-dkms/usr/src
+	install -m 0755 debian/debian-prebuild.sh $(DKMS_SRC_DIR)/debian-prebuild.sh

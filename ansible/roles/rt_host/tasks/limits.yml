@@ -1,0 +1,14 @@
+---
+- name: Ensure the realtime group exists
+  ansible.builtin.group:
+    name: "{{ rt_host_group }}"
+    system: true
+    state: present
+
+- name: Install the realtime limits policy
+  ansible.builtin.template:
+    src: 99-realtime.conf.j2
+    dest: "{{ rt_host_limits_file }}"
+    owner: root
+    group: root
+    mode: "0644"

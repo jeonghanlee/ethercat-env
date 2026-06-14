@@ -1,0 +1,21 @@
+---
+- name: Provision the RT kernel and headers
+  ansible.builtin.import_tasks: kernel.yml
+  when: rt_host_install_kernel | bool
+
+- name: Configure the realtime group and limits
+  ansible.builtin.import_tasks: limits.yml
+
+- name: Apply RT GRUB parameters
+  ansible.builtin.import_tasks: grub.yml
+  when: rt_host_apply_grub | bool
+
+- name: Report the clock source
+  ansible.builtin.import_tasks: clock.yml
+
+- name: Apply the RT service policy
+  ansible.builtin.import_tasks: services.yml
+  when: rt_host_apply_services | bool
+
+- name: Handle the tuned realtime profile
+  ansible.builtin.import_tasks: tuned.yml

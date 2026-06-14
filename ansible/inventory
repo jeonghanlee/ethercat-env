@@ -1,0 +1,5 @@
+[rt_hosts]
+localhost ansible_connection=local
+
+[ethercat_masters]
+localhost ansible_connection=local

@@ -1,0 +1,9 @@
+---
+# Provision a complete real-time EtherCAT master host: the RT host
+# configuration followed by the EtherCAT master role.
+- name: Provision the real-time EtherCAT master host
+  hosts: ethercat_masters
+  become: true
+  roles:
+    - rt_host
+    - ethercat_master

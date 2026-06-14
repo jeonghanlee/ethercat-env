@@ -1,0 +1,26 @@
+---
+- name: Query the tuned active profile
+  ansible.builtin.command:
+    cmd: tuned-adm active
+  register: rt_host_tuned_state
+  changed_when: false
+  check_mode: false
+  failed_when: false
+
+- name: Report the tuned state against the expected profile
+  ansible.builtin.debug:
+    msg: >-
+      tuned: {{ rt_host_tuned_state.stdout | default('unavailable') }}
+      (expected profile {{ rt_host_tuned_profile }},
+      apply={{ rt_host_tuned_apply }})
+
+# Report-only by default (the wrapper never auto-engages tuned). Apply
+# only on explicit opt-in and only when tuned is available.
+- name: Apply the tuned realtime profile (opt-in)
+  ansible.builtin.command:
+    cmd: "tuned-adm profile {{ rt_host_tuned_profile }}"
+  when:
+    - rt_host_tuned_apply | bool
+    - rt_host_tuned_state.rc == 0
+  register: rt_host_tuned_applied
+  changed_when: rt_host_tuned_applied.rc == 0

@@ -1,0 +1,5 @@
+{{ ansible_managed | comment }}
+# Realtime limits for the {{ rt_host_group }} group (rt_host role, cycle M6).
+{% for entry in rt_host_limits %}
+@{{ rt_host_group }}   -   {{ entry.item }}   {{ entry.value }}
+{% endfor %}

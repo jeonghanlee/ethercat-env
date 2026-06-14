@@ -1,0 +1,27 @@
+# CONFIG_PKG - Debian packaging configuration (release-1.0.0 cycle M2).
+#
+# The source package is built from the pinned upstream revision plus the
+# repository-owned debian/ directory. Entry verification 2026-06-12: the
+# pinned upstream revision ships no debian/ directory (greenfield).
+#
+# The upstream version embeds the git describe output under a version-legal
+# transform: 1.6.9-4-g46cc20e6 -> 1.6.9+4+g46cc20e6. Ordering is monotonic
+# on pin advance and sorts below the next upstream point release.
+
+PKG_NAME:=$(APPNAME)
+PKG_UPSTREAM_VERSION:=$(subst -,+,$(SRC_HASH))
+PKG_DEBIAN_REVISION:=1
+PKG_VERSION:=$(PKG_UPSTREAM_VERSION)-$(PKG_DEBIAN_REVISION)
+
+# Generated packaging artifacts land here (repo-local, gitignored).
+PKG_DIR:=$(TOP)/packaging
+PKG_ORIG:=$(PKG_DIR)/$(PKG_NAME)_$(PKG_UPSTREAM_VERSION).orig.tar.gz
+
+# debian/patches/series is GENERATED from the active wrapper patch classes
+# (patch/registry.mk is the single source of truth); the archive class never
+# enters the series. Generated series and copied patches are gitignored.
+PKG_SERIES_DIR:=$(TOP)/debian/patches
+PKG_SERIES:=$(PKG_SERIES_DIR)/series
+
+VARS_EXCLUDES+=PKG_NAME PKG_UPSTREAM_VERSION PKG_DEBIAN_REVISION PKG_VERSION
+VARS_EXCLUDES+=PKG_DIR PKG_ORIG PKG_SERIES_DIR PKG_SERIES

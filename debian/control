@@ -1,0 +1,62 @@
+Source: ethercat
+Section: admin
+Priority: optional
+Maintainer: Jeong Han Lee <jeonghan.lee@gmail.com>
+Build-Depends: debhelper-compat (= 13), dh-sequence-dkms, pkgconf, autoconf, automake, libtool
+Standards-Version: 4.7.0
+Rules-Requires-Root: no
+Homepage: https://gitlab.com/etherlab.org/ethercat
+
+Package: libethercat1
+Architecture: any
+Multi-Arch: same
+Section: libs
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: EtherCAT master userspace shared library
+ Runtime shared library (libethercat, SONAME libethercat.so.1) of the
+ IgH EtherCAT master for the Debian 13 EtherCAT environment.
+ Applications that drive the EtherCAT master through the realtime
+ application interface (ecrt.h) link against this library. The 1.0.0
+ package set has no in-tree consumer; the library is delivered for site
+ application authors. The ethercat command-line tool is self-contained
+ and does not link it.
+
+Package: libethercat-dev
+Architecture: any
+Multi-Arch: same
+Section: libdevel
+Depends: libethercat1 (= ${binary:Version}), ${misc:Depends}
+Description: EtherCAT master userspace library - development files
+ Development files for the libethercat shared library: the C headers
+ (ecrt.h and ectty.h), the development symlink, the static archive, the
+ pkg-config file, and the CMake package configuration. Install this to
+ build applications against the IgH EtherCAT master realtime
+ application interface.
+
+Package: ethercat-tools
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: EtherCAT master command-line tool
+ The ethercat command-line tool of the IgH EtherCAT master for the
+ Debian 13 EtherCAT environment, with its bash completion. The tool is
+ self-contained; the realtime application library is delivered
+ separately by libethercat1, kernel modules by ethercat-dkms, and host
+ integration (systemd, udev, configuration policy) by ethercat-host.
+
+Package: ethercat-dkms
+Architecture: all
+Depends: ${misc:Depends}, autoconf, automake, libtool, pkgconf
+Description: EtherCAT master kernel modules (DKMS)
+ DKMS source for the IgH EtherCAT master kernel modules (ec_master and
+ the enabled device modules, generic profile). Kernel updates rebuild
+ the modules against the target kernel via DKMS.
+
+Package: ethercat-host
+Architecture: all
+Depends: ${misc:Depends}, ethercat-dkms, ethercat-tools
+Description: EtherCAT master host integration
+ Host integration for the IgH EtherCAT master on Debian 13: systemd
+ service units, udev device-access rules with the ethercat system
+ group, and the reference runtime configuration. The live
+ /etc configuration is rendered by site provisioning; the service
+ fails closed when no configuration is present.

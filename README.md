@@ -1,48 +1,69 @@
 # EtherCAT Master Configuration Environment
 
-Configuration Environment for EtherLab IgH EtherCAT Master at https://gitlab.com/etherlab.org/ethercat
+Configuration environment for the EtherLab IgH EtherCAT Master
+(https://gitlab.com/etherlab.org/ethercat) on Debian 13.
 
 ## History
-The long history behind this repository is https://github.com/jeonghanlee/etherlabmaster. Most of the options are identical, but I redesign the old repository to finish the same jobs. However, only **Debian** is the supported platform.
 
-## Packages
+The long history behind this repository is
+https://github.com/jeonghanlee/etherlabmaster. Most of the options are
+identical, but the old repository was redesigned to finish the same
+jobs. Only **Debian** is the supported platform.
 
-One should install relevant packages before trying to setup this repository. After this, one should reboot the system once in order to match the running kernel version and kernel header files. If one has its own customized kernel version, one should configure them properly. The following guide is only valid for a **Vanilla Kernel** of Debian Linux 13.
+## Delivery Model
 
-* Debian 13
- ```
- $ apt install -y linux-headers-$(uname -r) build-essential libtool automake tree dkms
- ```
+The environment delivers the same capability through two paths; a host
+uses one path, not both (they collide on `/usr/bin/ethercat` and the
+`ethercat` group). The capability-to-destination map is
+`docs/delivery-model.md`.
 
-## Quick Start
+**Production - Debian packages plus Ansible.** Install the package set
+from a local or site apt repository, then provision with Ansible:
 
 ```bash
-$ make init
-$ make autoconf
-$ make build
-$ make build.modules
+sudo apt install ethercat-host
+cd ansible
+ansible-playbook playbooks/site.yml -e ethercat_master_device=<iface>
 ```
 
-The full target surface (doctor, profiles, patches, DKMS lifecycle, runtime
-configuration, systemd/udev, RT host policy, removal, verification) is listed
-by `make help` and documented under `docs/`.
+`apt install ethercat-host` pulls `ethercat-dkms` (kernel modules,
+rebuilt on each kernel update) and `ethercat-tools` (the CLI);
+`libethercat1` / `libethercat-dev` are the runtime library and its
+development files. The `ethercat_master` role renders
+`/etc/ethercat.conf` and starts `ethercat.service`. See
+`docs/install.md`.
+
+**Development - Make wrapper.** The retained wrapper builds and installs
+under the `/opt/ethercat` prefix for development and CI:
+
+```bash
+sudo apt install -y linux-headers-$(uname -r) build-essential libtool automake dkms
+make init
+make build.baseline
+```
+
+The full wrapper target surface (doctor, profiles, patches, DKMS
+lifecycle, runtime configuration, systemd/udev, RT host policy, removal,
+verification) is listed by `make help`.
 
 ## Documentation
 
 | Document | Scope |
 | :--- | :--- |
-| `docs/architecture.md` | System architecture and target graph design |
-| `docs/install.md` | Installation target graph and host state |
-| `docs/operation.md` | Read-only status collection and routine operation |
+| `docs/delivery-model.md` | Package and role delivery model: the capability-to-destination map |
+| `docs/architecture.md` | System architecture, delivery structure, and data flow |
+| `docs/install.md` | Installation - production (packages + Ansible) and development (wrapper) |
+| `docs/operation.md` | Routine operation and read-only status collection |
 | `docs/removal.md` | Removal, rollback, and residue audit |
-| `docs/rt-tuning.md` | Debian 13 real-time host policy |
+| `docs/rt-tuning.md` | Debian 13 real-time host policy (role and wrapper at parity) |
 | `docs/field-readiness.md` | VM and hardware acceptance evidence model |
+| `docs/testplan_1.0.0.md` | Release 1.0.0 cycle test plan |
 | `docs/milestone.md` | Canonical work register and milestone status |
 
 ## Related Repositories
 
 | Repository | Role |
 | :--- | :--- |
-| [ethercat-env-validation](https://github.com/jeonghanlee/ethercat-env-validation) | VM real-execution validation harness and evidence for this repository (R2-12) |
+| [ethercat-env-validation](https://github.com/jeonghanlee/ethercat-env-validation) | VM real-execution validation: the source-build and package/Ansible acceptance vehicles and recorded evidence |
 | [etherlabmaster](https://github.com/jeonghanlee/etherlabmaster) | Historical reference implementation |
 | [realtime-config](https://github.com/jeonghanlee/realtime-config) | Real-time host configuration reference |

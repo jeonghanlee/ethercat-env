@@ -1,0 +1,102 @@
+# RULES_PKG - Debian source package baseline (release-1.0.0 cycle M2).
+#
+# Repo-local, non-root targets. The orig tarball is generated from the
+# verified pin; ORIG_SHA256 (configure/RELEASE) binds the UNCOMPRESSED tar
+# stream because the gzip layer is not byte-stable across git versions.
+# The doxygen-layout submodule is excluded by construction (git archive
+# never includes gitlink contents); its content is docs-only and does not
+# affect the build. Build execution is NOT a workstation concern: the
+# authoritative build verification channel is the disposable-VM packaging
+# phase (ethercat-env-validation).
+
+.PHONY: pkg.orig pkg.orig.verify pkg.orig.checksum pkg.series pkg.verify
+
+## Generate the orig tarball from the verified pinned revision
+pkg.orig: src.verify
+	$(QUIET)$(call guard-path,$(PKG_ORIG),$(PKG_DIR))
+	$(QUIET)mkdir -p $(PKG_DIR)
+	$(QUIET)git -C $(SRC_PATH) archive --format=tar --prefix=$(PKG_NAME)-$(PKG_UPSTREAM_VERSION)/ HEAD | gzip -9n > $(PKG_ORIG)
+	$(QUIET)printf "pkg.orig: OK - %s\n" "$(PKG_ORIG)"
+
+## Verify the orig content checksum against ORIG_SHA256 (fail-closed)
+pkg.orig.verify:
+	$(QUIET)expected="$(ORIG_SHA256)"; \
+	if [ -z "$$expected" ]; then \
+		printf "pkg.orig.verify: FAIL - ORIG_SHA256 is empty (fail-closed)\n" >&2; exit 1; \
+	fi; \
+	if [ ! -f "$(PKG_ORIG)" ]; then \
+		printf "pkg.orig.verify: FAIL - no orig at %s (run pkg.orig)\n" "$(PKG_ORIG)" >&2; exit 1; \
+	fi; \
+	if ! zcat $(PKG_ORIG) > /dev/null 2>&1; then \
+		printf "pkg.orig.verify: FAIL - gzip integrity check failed for %s\n" "$(PKG_ORIG)" >&2; exit 1; \
+	fi; \
+	observed="$$(zcat $(PKG_ORIG) 2>/dev/null | sha256sum | cut -d' ' -f1)"; \
+	if [ "$$expected" != "$$observed" ]; then \
+		printf "pkg.orig.verify: FAIL - expected %s but observed %s\n" "$$expected" "$$observed" >&2; exit 1; \
+	fi; \
+	printf "pkg.orig.verify: OK - orig content matches ORIG_SHA256\n"
+
+## Print the current orig content checksum (read-only; for RELEASE updates)
+pkg.orig.checksum:
+	$(QUIET)printf ">> Expected ORIG_SHA256 : %s\n" "$(ORIG_SHA256)"
+	$(QUIET)printf ">> Observed checksum    : %s\n" "$$(git -C $(SRC_PATH) archive --format=tar --prefix=$(PKG_NAME)-$(PKG_UPSTREAM_VERSION)/ HEAD | sha256sum | cut -d' ' -f1)"
+
+## Generate debian/patches/series from the active patch classes
+# Build ordering contract: the VM packaging phase runs pkg.series before
+# dpkg-buildpackage. Any future make-level build target MUST declare
+# pkg.series as a prerequisite, or the stale-series gap reopens
+# (cross-check finding RV1-R2-F2, session rs20260612_015044).
+pkg.series:
+	$(QUIET)$(call guard-path,$(PKG_SERIES),$(PKG_SERIES_DIR))
+	$(QUIET)mkdir -p $(PKG_SERIES_DIR)
+	$(QUIET): > $(PKG_SERIES); \
+	files="$(strip $(foreach c,$(PATCH_CLASSES_ACTIVE),$(PATCH_FILES_$(c))))"; \
+	if [ -n "$$files" ]; then \
+		for f in $$files; do \
+			cp "$$f" $(PKG_SERIES_DIR)/ && printf "%s\n" "$$(basename $$f)" >> $(PKG_SERIES); \
+		done; \
+	fi; \
+	printf "pkg.series: OK - %s entries from active classes (archive excluded)\n" "$$(wc -l < $(PKG_SERIES))"
+
+# pkg.verify - SKIP-gated verify.all member.
+# Half (a): orig checksum - skips with a note when no orig artifact exists.
+# Half (b): series-registry match - regenerates to a temp file and compares.
+# Half (c): build check - PERMANENTLY skips on hosts without the packaging
+# toolchain (this workstation never installs it); the VM packaging phase is
+# the authoritative build verification channel.
+## Verify packaging state (orig checksum, series match; build is VM-gated)
+pkg.verify:
+	$(QUIET)if [ -f "$(PKG_ORIG)" ]; then \
+		$(MAKE) --no-print-directory pkg.orig.verify; \
+	else \
+		printf "pkg.verify: SKIP - no orig artifact (pkg.orig not run on this host)\n"; \
+	fi
+	$(QUIET)if [ -f "$(PKG_SERIES)" ]; then \
+		tmp="$$(mktemp)"; \
+		files="$(strip $(foreach c,$(PATCH_CLASSES_ACTIVE),$(PATCH_FILES_$(c))))"; \
+		if [ -n "$$files" ]; then \
+			for f in $$files; do printf "%s\n" "$$(basename $$f)" >> "$$tmp"; done; \
+		fi; \
+		if cmp -s "$$tmp" $(PKG_SERIES); then \
+			printf "pkg.verify: OK - series matches the active class registry\n"; \
+		else \
+			printf "pkg.verify: FAIL - series does not match the active class registry\n" >&2; rm -f "$$tmp"; exit 1; \
+		fi; \
+		rm -f "$$tmp"; \
+	else \
+		printf "pkg.verify: SKIP - no generated series (pkg.series not run on this host)\n"; \
+	fi
+	$(QUIET)if command -v dpkg-buildpackage >/dev/null 2>&1 && command -v dh >/dev/null 2>&1; then \
+		printf "pkg.verify: NOTE - packaging toolchain present; build verification runs in the VM phase\n"; \
+	else \
+		printf "pkg.verify: SKIP - packaging toolchain absent; build verification is VM-phase only\n"; \
+	fi
+	$(QUIET)t="$$(sed 's/@MODULE_NAME@/ethercat/g;s/@MODULE_VERSION@/\#MODULE_VERSION\#/g' $(TOP)/templates/dkms.conf.in | grep -E '^(MAKE\[0\]|CLEAN)=')"; \
+	p="$$(grep -E '^(MAKE\[0\]|CLEAN)=' $(TOP)/debian/ethercat-dkms.dkms)"; \
+	if [ "$$t" = "$$p" ]; then \
+		printf "pkg.verify: OK - F4 overrides agree between template and package conf\n"; \
+	else \
+		printf "pkg.verify: FAIL - F4 override drift between templates/dkms.conf.in and debian/ethercat-dkms.dkms\n" >&2; exit 1; \
+	fi
+
+-include $(TOP)/configure/RULES_PKG.local

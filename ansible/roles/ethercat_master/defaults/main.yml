@@ -1,0 +1,27 @@
+---
+# ethercat_master role defaults (release-1.0.0 cycle M7). The role is the
+# sole writer of /etc/ethercat.conf (U3); a bound device is required so
+# the master never starts empty (F3).
+
+# Master device: a network interface name or a MAC address. REQUIRED -
+# an empty value fails closed before any /etc write.
+ethercat_master_device: ""
+
+# Backup (redundancy) device for master 0; empty by default.
+ethercat_master_backup: ""
+
+# Enabled device drivers, BARE names: ethercatctl prepends ec_ at load
+# time, so "generic" loads ec_generic (matches the wrapper).
+ethercat_master_device_modules:
+  - generic
+
+# Interfaces brought up/down with the master. Must be interface NAMES
+# (not a MAC); defaults to the device when the device is an interface.
+ethercat_master_updown: "{{ ethercat_master_device }}"
+
+# Packages and service.
+ethercat_master_conf: /etc/ethercat.conf
+ethercat_master_packages:
+  - ethercat-host
+ethercat_master_service: ethercat.service
+ethercat_master_start: true

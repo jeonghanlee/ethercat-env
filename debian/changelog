@@ -1,0 +1,8 @@
+ethercat (1.6.9+4+g46cc20e6-1) unstable; urgency=medium
+
+  * Initial site packaging of the pinned upstream revision
+    1.6.9-4-g46cc20e6 (release-1.0.0 cycle M2, issue #2).
+  * Source package baseline: userspace-only build (--disable-kernel);
+    binary package contents follow in cycle M3-M5.
+
+ -- Jeong Han Lee <jeonghan.lee@gmail.com>  Fri, 12 Jun 2026 02:39:21 -0700

@@ -1,0 +1,11 @@
+---
+# D2: install the RT kernel and headers; do not change the GRUB boot
+# default. The RT kernel wins the default menu entry through version
+# ordering once installed; post-reboot confirmation is an M16 gate.
+- name: Install the RT kernel and headers
+  ansible.builtin.apt:
+    name:
+      - "{{ rt_host_kernel_pkg }}"
+      - "{{ rt_host_headers_pkg }}"
+    state: present
+    update_cache: true

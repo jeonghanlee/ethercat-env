@@ -1,0 +1,6 @@
+---
+- name: Configure the real-time host
+  hosts: rt_hosts
+  become: true
+  roles:
+    - rt_host
