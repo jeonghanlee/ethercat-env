@@ -36,21 +36,24 @@ runtime readiness checks, and field deployment prerequisites for Debian 13.
 
 ## Canonical Work Register
 
-Next session entry point: Release 1.0.0 cycle M10 (documentation
-refresh, issue #10) on branch `dev/release-1.0.0`. M1 through M9 are
-closed (2026-06-12/13, issues #1-#9): delivery model, source package
+Next session entry point: Release 1.0.0 cycle M11 (register-local
+release gate) on branch `dev/release-1.0.0`. M1 through M10 are closed
+(2026-06-12/13, issues #1-#10): delivery model, source package
 baseline, ethercat-dkms, the userspace tools split, host integration,
 the rt_host and ethercat_master Ansible roles, the verification
-umbrella, and VM acceptance (the package/Ansible path reaches p1-p9
-outcome parity on a fresh VM, post-reboot persistence included). VM
-evidence lives in `ethercat-env-validation` (`evidence/release-1.0.0/
-m2`-`m9`). M10 refreshes the install/operation/removal documents to the
-package and role delivery model (depends on M1-M9). The cycle work
-order and verification subs are in the Release 1.0.0 Cycle section
+umbrella, VM acceptance (the package/Ansible path reaches p1-p9
+outcome parity on a fresh VM, post-reboot persistence included), and
+the documentation refresh (six docs aligned to the package and role
+delivery model: install/operation/removal plus architecture/rt-tuning/
+field-readiness). VM evidence lives in `ethercat-env-validation`
+(`evidence/release-1.0.0/m2`-`m9`). M11 runs the release gate (cycle
+batch re-run, full suites, standing plan) then merges to master, tags
+1.0.0, and publishes the GitHub release (depends on M1-M10). The cycle
+work order and verification subs are in the Release 1.0.0 Cycle section
 below; procedures are in `docs/testplan_1.0.0.md`. Milestones M1 through
-M10 are issues #1 through #10 under GitHub milestone 1.0.0. R2-13 and
-Revision 1 M16 remain external hardware gates and inherit into the cycle
-unchanged.
+M10 are issues #1 through #10 under GitHub milestone 1.0.0; M11 is
+register-local. R2-13 and Revision 1 M16 remain external hardware gates
+and inherit into the cycle unchanged.
 
 The Release 1.0.0 cycle runs remote-authoritative: each milestone issue
 carries its verification checkbox list as the status source of truth and
@@ -336,17 +339,17 @@ re-review, adding `libethercat1` (runtime library) and `libethercat-dev`
 | Verification | M9 VM acceptance | Milestone | Closed (2026-06-13) | M8 | Issue #9 closed. p17/p18 acceptance phases; cross-check ACCEPT by both reviewers (session rs20260613_161827). |
 | | M9.T1 New harness phases pass first-try with p1-p9 outcome parity | Verification sub | Done | M9 | Fresh VM: p17 pre-reboot parity p3-p7, host reboot, p18 post-reboot service active + purge clean (evidence/release-1.0.0/m9). |
 | | M9.T4 Standing harness amended with package-install and Ansible-provisioning phases | Verification sub | Done | M9 | Standing Plan records two acceptance vehicles at outcome parity (testplan). |
-| Documentation | M10 Documentation refresh | Milestone | Not started | M1-M9 | Issue #10. |
-| | M10.T1 Install, operation, removal documents match implemented behavior | Verification sub | Not started | M10 | |
+| Documentation | M10 Documentation refresh | Milestone | Closed (2026-06-13) | M1-M9 | Issue #10 closed. Six docs refreshed to the two-path delivery model (install/operation/removal + architecture/rt-tuning/field-readiness, U17=c); cross-check ACCEPT by both reviewers (session rs20260613_191222). |
+| | M10.T1 Install, operation, removal documents match implemented behavior | Verification sub | Done | M10 | No-VM doc-vs-implementation cross-check against debian/ and ansible/; both reviewers ACCEPT. |
 | Gate | M11 Release gate 1.0.0 | Release gate (register-local) | Not started | M1-M10 | Gates merge to master, tag 1.0.0, GitHub release. |
 | | M11.T1 Cycle batch re-run against the final tree | Verification sub | Not started | M11 | |
 | | M11.T2 Full automated suites | Verification sub | Not started | M11 | |
 | | M11.T3 Standing plan executed with M9.T4 amendments | Verification sub | Not started | M11 | |
 
 Tally: 11 milestones (10 issue-tracked, 1 register-local gate) and 21
-verification subs; closed: 9 milestones (M1-M9), 17 subs (M1.T1,
+verification subs; closed: 10 milestones (M1-M10), 18 subs (M1.T1,
 M2.T1, M2.T2, M3.T1, M3.T2, M4.T1, M5.T1, M5.T2, M5.T3, M6.T1, M6.T2,
-M7.T1, M7.T3, M8.T1, M8.T2, M9.T1, M9.T4). Entry point: M10.
+M7.T1, M7.T3, M8.T1, M8.T2, M9.T1, M9.T4, M10.T1). Entry point: M11.
 
 ## Profile Policy
 
@@ -422,21 +425,24 @@ host-configuration roles, acceptance-gated by the `ethercat-env-validation`
 phase harness. The work order M1 through M11 with verification subs is in
 the Release 1.0.0 Cycle section; procedures are in `docs/testplan_1.0.0.md`.
 Milestones M1 through M10 are issues #1 through #10 under GitHub milestone
-1.0.0. M1 through M9 are closed (2026-06-12/13, issues #1-#9): delivery
-model, source package baseline, the ethercat-dkms package (F4 fix,
-cross-kernel vermagic verified), the userspace tools split
-(libethercat1 / libethercat-dev / ethercat-tools), host integration
-(ethercat-host: systemd unit, udev rule, sysusers.d group, fail-closed
-config; F2/F3/F5 and EC-8 verified), the rt_host and ethercat_master
-Ansible roles (site.yml composes both; idempotent, bound device, active
-service verified), the verification umbrella (verify.all runs lintian +
-ansible-lint + a playbook syntax-check), and VM acceptance (the
-package/Ansible path reaches p1-p9 outcome parity on a fresh VM,
-post-reboot persistence included). VM evidence:
-`ethercat-env-validation` (`evidence/release-1.0.0/m2` through `m9`).
-Next: M10 (issue #10), documentation refresh - align the
-install/operation/removal documents with the package and role delivery
-model.
+1.0.0; M11 is register-local. M1 through M10 are closed (2026-06-12/13,
+issues #1-#10): delivery model, source package baseline, the
+ethercat-dkms package (F4 fix, cross-kernel vermagic verified), the
+userspace tools split (libethercat1 / libethercat-dev / ethercat-tools),
+host integration (ethercat-host: systemd unit, udev rule, sysusers.d
+group, fail-closed config; F2/F3/F5 and EC-8 verified), the rt_host and
+ethercat_master Ansible roles (site.yml composes both; idempotent, bound
+device, active service verified), the verification umbrella (verify.all
+runs lintian + ansible-lint + a playbook syntax-check), VM acceptance
+(the package/Ansible path reaches p1-p9 outcome parity on a fresh VM,
+post-reboot persistence included), and the documentation refresh (six
+docs aligned to the package and role delivery model:
+install/operation/removal plus architecture/rt-tuning/field-readiness;
+both reviewers ACCEPT). VM evidence: `ethercat-env-validation`
+(`evidence/release-1.0.0/m2` through `m9`).
+Next: M11 (register-local release gate) - cycle batch re-run, full
+automated suites, the standing plan on a fresh VM, then merge to master,
+tag 1.0.0, and publish the GitHub release.
 
 R2-13 and Revision 1 M16 remain external hardware gates (real adapter, slave
 chain, hardware reboot persistence, unload/reload, RT readiness, production

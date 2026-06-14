@@ -2,24 +2,29 @@
 
 ## Scope
 
-This document defines the VM, hardware, reboot, and production acceptance evidence required after repository-local verification.
+This document defines the VM, hardware, reboot, and production acceptance
+evidence required after repository-local verification, for both delivery
+vehicles (source-build and package/Ansible).
 
 **Out of scope:** Architecture is covered in `docs/architecture.md`; routine operation is covered in `docs/operation.md`; install, removal, and RT policy mechanics are covered in their dedicated documents.
 
 ## Readiness Model
 
-Repository-local verification proves target graph structure and guarded behavior. Field readiness requires execution evidence from environments that can mutate host state and exercise real EtherCAT hardware.
+Repository-local verification proves target graph structure and guarded
+behavior. Field readiness requires execution evidence from environments
+that can mutate host state and exercise real EtherCAT hardware.
 
 Acceptance proceeds in two stages.
 
-| Stage | Environment | Purpose |
-| :--- | :--- | :--- |
-| R2-12 | Debian 13 VM | Execute root-affecting install, module, systemd, udev, GRUB, service-policy, and removal targets for real. |
-| R2-13 / M16 | Target hardware | Prove real adapter behavior, slave discovery, reboot persistence, kernel update behavior, unload/reload, RT readiness, and production acceptance. |
+| Stage | Environment | Purpose | State |
+| :--- | :--- | :--- | :--- |
+| VM acceptance | Debian 13 VM | Execute the root-affecting install, module, systemd, udev, GRUB, service-policy, and removal behavior for real, on both acceptance vehicles. | Complete (release-1.0.0 cycle M9). |
+| R2-13 / Revision 1 M16 | Target hardware | Prove real adapter behavior, slave discovery, reboot persistence, kernel update behavior, unload/reload, RT readiness, and production acceptance. | Blocked (hardware gate). |
 
 ## Repository-Local Precondition
 
-Before VM execution, the repository should have a clean repository-local verification pass.
+Before VM execution, the repository should have a clean repository-local
+verification pass.
 
 ```bash
 make verify.all
@@ -30,27 +35,45 @@ make rt.status
 make remove.audit
 ```
 
-These targets do not replace VM or hardware execution. They establish that the target graph and read-only reporting surface are coherent before host mutation.
+These targets do not replace VM or hardware execution. They establish
+that the target graph and read-only reporting surface are coherent
+before host mutation.
 
 ## VM Execution Evidence
 
-The VM validation environment is a separate validation repository, not additional state inside this repository: [ethercat-env-validation](https://github.com/jeonghanlee/ethercat-env-validation) carries the qemu/KVM driver, the phase scripts, and the recorded evidence sets. The VM is Debian 13 and runs the root-affecting targets in dependency order behind the doctor and guard checks.
+The VM validation environment is a separate validation repository, not
+additional state inside this repository: [ethercat-env-validation](https://github.com/jeonghanlee/ethercat-env-validation) carries the qemu/KVM driver, the phase scripts, and the recorded evidence sets. The VM is Debian 13 and runs the root-affecting targets in dependency order behind the doctor and guard checks.
 
-Minimum VM evidence:
+Two acceptance vehicles run on the VM at outcome parity (the operational
+end-state is identical; the master service unit differs by route -
+source `epics-ethercat.service`, package `ethercat.service`). The
+durable parity record is the Source-vs-Package Acceptance Parity table
+in `docs/testplan_1.0.0.md`.
+
+| Vehicle | Phases | Evidence |
+| :--- | :--- | :--- |
+| Source-build path | p1-p9 | Build from the pinned upstream source, install, DKMS, runtime, systemd/udev, RT, post-reboot, removal (the R2-12 vehicle). |
+| Package/Ansible path | p10-p18 | Package-install phases (p10 build, p11 DKMS, p12 tools, p13 host), Ansible-provisioning phases (p14 `rt_host`, p15 `ethercat_master` via `site.yml`), the lint/check gate p16, and the acceptance run p17 (pre-reboot parity) - host-driven reboot - p18 (post-reboot parity, removal). |
+
+Minimum VM evidence per vehicle:
 
 | Area | Evidence |
 | :--- | :--- |
-| Source and build | `make init`, `make build.baseline`, and source revision verification succeed. |
-| Prefix and userspace | Prefix install path, upstream userspace install path, command link, and loader state are recorded. |
-| DKMS | `dkms.conf`, DKMS add/install behavior, and resulting module state are recorded. |
-| Runtime config | Generated EtherCAT configuration is linted and the installed or staged config path is recorded. |
-| systemd and udev | Unit and rule installation, reload behavior, enable/start/stop/disable behavior, and status output are recorded. |
-| RT policy | Kernel package provisioning, limits, GRUB apply/audit/rollback, service policy, clock status, and tuned status are recorded. |
-| Removal | `remove.dryrun`, `remove.uninstall`, `remove.rt`, `remove.purge`, and `remove.audit` outcomes are recorded. |
+| Source and build / package build | Source build or `dpkg-buildpackage` produces the expected artifacts; source revision and orig checksum verified. |
+| Prefix/userspace or command | Command path resolves; `ethercat-tools` is self-contained (`libethercat1` is not installed - no in-cycle consumer); loader state recorded. |
+| DKMS | `dkms.conf`/DKMS source, add/install behavior, cross-kernel vermagic, and resulting module state recorded. |
+| Runtime config | Configuration is linted/rendered with a bound `MASTER0_DEVICE`; the installed config path recorded. |
+| systemd and udev | Unit and rule installation, reload, enable/start/stop/disable behavior, the `ethercat` group, and status output recorded. |
+| RT policy | Kernel provisioning, limits, GRUB apply/audit/rollback, service policy, clock status, and tuned status recorded; `rt.status` parity. |
+| Removal | Purge/uninstall and residue audit outcomes recorded; the `ethercat` group retained as a note (U4). |
+
+The recorded evidence sets are in `ethercat-env-validation`
+(`evidence/release-1.0.0/m2` through `m9`).
 
 ## Hardware Acceptance Evidence
 
-Hardware acceptance requires a real EtherCAT adapter and at least one known slave chain. The following gates come from `docs/milestone.md`.
+Hardware acceptance requires a real EtherCAT adapter and at least one
+known slave chain. The following gates come from `docs/milestone.md`.
 
 | Gate | Required evidence |
 | :--- | :--- |
@@ -63,6 +86,10 @@ Hardware acceptance requires a real EtherCAT adapter and at least one known slav
 
 ## Status Classification
 
-Repository-local milestones can be complete while hardware gates remain blocked. A milestone is not field-complete until the required VM or hardware evidence exists in the appropriate validation record.
+Repository-local milestones can be complete while hardware gates remain
+blocked. A milestone is not field-complete until the required VM or
+hardware evidence exists in the appropriate validation record.
 
-The current next execution entry point is R2-12 Debian 13 VM real-execution validation. After VM evidence is complete, proceed to R2-13 / M16 hardware acceptance.
+VM acceptance is complete for both vehicles (cycle M9). The current next
+execution entry point is R2-13 / Revision 1 M16 hardware acceptance on
+target hardware with a real adapter and slave chain.

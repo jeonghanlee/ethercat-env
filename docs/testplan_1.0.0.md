@@ -175,3 +175,18 @@ release) follows the git-workflow release reference.
   fresh-VM acceptance with a host-driven reboot between them. The
   Source-vs-Package Acceptance Parity table (Standing Plan section) is
   the durable parity record.
+- 2026-06-13 (M10): the system documentation set is refreshed to the
+  two-path delivery model - a production path (the five-package set plus
+  the rt_host/ethercat_master roles composed by site.yml) and the
+  retained development Make wrapper, with an explicit do-not-mix caveat
+  (the package /usr/bin/ethercat and ethercat group collide with the
+  wrapper symlink and udev-created group). U17 = (c) expanded the bound
+  set from three documents to six: install.md, operation.md, removal.md
+  (the production install/operate/remove paths, U3 no /etc config and U4
+  group-retained semantics stated precisely) plus architecture.md (the
+  delivery structure and capability layers), rt-tuning.md (the RT policy
+  at role/wrapper parity against the rt.status oracle), and
+  field-readiness.md (the stale R2-12 entry point corrected - VM
+  acceptance is complete for both vehicles at M9, the next gate is
+  R2-13 / Revision 1 M16 hardware acceptance). M10.T1 is verified by a
+  no-VM doc-vs-implementation cross-check against debian/ and ansible/.
