@@ -35,9 +35,33 @@ upstream revision plus `debian/`). The five binary packages are:
 | `libethercat1` | Runtime shared library (`libethercat.so.1`) for site application authors; the package set has no in-tree consumer. |
 | `libethercat-dev` | Development files (`ecrt.h`, `ectty.h`, the `.so` symlink, the static archive, the pkg-config and CMake metadata) for building applications. |
 
-The packages are installed from a local or site apt repository. They
-are built in-tree (the validation harness builds them in phases p13 and
-p15); there is no public apt source.
+There is no public apt source. Build the package set from a checkout
+and expose it as a local apt repository first (this is exactly what the
+validation harness automates in phase p17):
+
+```bash
+git clone https://github.com/jeonghanlee/ethercat-env
+cd ethercat-env
+make init
+make pkg.orig
+```
+
+Assemble the source tree from the generated orig plus `debian/`, build
+the binary packages, and index the result as a local apt repository:
+
+```bash
+orig="$(ls packaging/ethercat_*.orig.tar.gz)"
+ver="$(basename "${orig}" .orig.tar.gz)"; ver="${ver#ethercat_}"
+mkdir -p ~/pkgbuild && cp "${orig}" ~/pkgbuild/
+tar -xzf "${orig}" -C ~/pkgbuild
+cp -a debian ~/pkgbuild/"ethercat-${ver}"/
+( cd ~/pkgbuild/"ethercat-${ver}" && dpkg-buildpackage -us -uc )
+( cd ~/pkgbuild && dpkg-scanpackages -m . /dev/null > Packages )
+echo "deb [trusted=yes] file:${HOME}/pkgbuild ./" | sudo tee /etc/apt/sources.list.d/local-ethercat.list
+sudo apt-get update
+```
+
+With the local repository in place, install the host package:
 
 ```bash
 sudo apt install ethercat-host

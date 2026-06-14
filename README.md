@@ -17,21 +17,32 @@ uses one path, not both (they collide on `/usr/bin/ethercat` and the
 `ethercat` group). The capability-to-destination map is
 `docs/delivery-model.md`.
 
-**Production - Debian packages plus Ansible.** Install the package set
-from a local or site apt repository, then provision with Ansible:
+**Production - Debian packages plus Ansible.** There is no public apt
+source: build the package set from a checkout into a local apt
+repository first, then either provision with Ansible or install by hand.
 
 ```bash
-sudo apt install ethercat-host
+git clone https://github.com/jeonghanlee/ethercat-env
+cd ethercat-env
+make init && make pkg.orig
+# then dpkg-buildpackage + index a local apt repo - see docs/install.md
+```
+
+Provision with Ansible - the `ethercat_master` role installs the
+packages from the local repo, renders `/etc/ethercat.conf`, and starts
+`ethercat.service`:
+
+```bash
 cd ansible
 ansible-playbook playbooks/site.yml -e ethercat_master_device=<iface>
 ```
 
-`apt install ethercat-host` pulls `ethercat-dkms` (kernel modules,
-rebuilt on each kernel update) and `ethercat-tools` (the CLI);
-`libethercat1` / `libethercat-dev` are the runtime library and its
-development files. The `ethercat_master` role renders
-`/etc/ethercat.conf` and starts `ethercat.service`. See
-`docs/install.md`.
+Without Ansible, install and configure by hand: `sudo apt install
+ethercat-host` (pulls `ethercat-dkms` and `ethercat-tools`), copy the
+reference example to `/etc/ethercat.conf`, set `MASTER0_DEVICE`, and
+`systemctl enable --now ethercat.service`. `libethercat1` /
+`libethercat-dev` are the runtime library and its development files. See
+`docs/install.md` for the full build and local-repo steps.
 
 **Development - Make wrapper.** The retained wrapper builds and installs
 under the `/opt/ethercat` prefix for development and CI:
