@@ -6,6 +6,9 @@
 rt_host_install_kernel: true
 rt_host_kernel_pkg: linux-image-rt-amd64
 rt_host_headers_pkg: linux-headers-rt-amd64
+# Mirrors CONFIG_RT RT_KERNEL_FLAVOR for parity; informational - kernel
+# selection (RT-2) is covered by the rt.status oracle, not a role task.
+rt_host_kernel_flavor: rt-amd64
 
 # Realtime group and limits.
 rt_host_group: realtime

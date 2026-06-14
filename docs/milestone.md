@@ -458,3 +458,37 @@ recorded in their sections above and merged to master (`1f40451`). Removal
 of the superseded partial VM harness in the `cloud-provision` and
 `ansible-provision` repositories remains follow-up work in those
 repositories.
+
+## Conceptual Integrity Sweep (2026-06-14)
+
+Post-1.0.0 whole-codebase coherence sweep (conceptual-integrity skill).
+Confirmed defects: none. One parity fix applied; six doors examined and
+left closed (recorded so the next sweep does not re-investigate them).
+
+Applied: the `rt_host` role now mirrors `CONFIG_RT` `RT_KERNEL_FLAVOR`
+(`rt_host_kernel_flavor: rt-amd64`) - the only CONFIG_RT value the role
+had not mirrored. Informational: RT-2 kernel selection is covered by the
+`rt.status` oracle, not a role task.
+
+Decided-Keep (examined, no defect, no work item):
+- ethercat.conf renderers (`templates/ethercat.conf.in` vs
+  `ansible/roles/ethercat_master/templates/ethercat.conf.j2`): identical
+  key set, quoting, defaults, and fail-closed lint - the parallel-renderer
+  seam is sound.
+- udev rule: content identical (`KERNEL=="EtherCAT[0-9]*"`, `MODE="0660"`,
+  `GROUP="ethercat"`); only the installed filename differs
+  (`99-EtherCAT.rules` wrapper vs `99-ethercat.rules` package) -
+  intentional, documented, and the two paths never coexist (one path per
+  host).
+- `ethercat` group name: the sysusers.d fragment, the wrapper groupadd,
+  and both udev `GROUP=` values all agree.
+- Device module naming: bare `generic` becomes `ec_generic` exactly once
+  (wrapper default, role default, and the ethercatctl `ec_` prepend agree;
+  no double-prefix - the M4 defect is absent).
+- Version identity: `SRC_HASH` (1.6.9-4-g46cc20e6), the changelog upstream
+  version (1.6.9+4+g46cc20e6), and the docs agree; `ORIG_SHA256` is
+  consistent.
+- ethercat-dkms `PACKAGE_VERSION="#MODULE_VERSION#"`: NOT a defect - the
+  standard `dh_dkms` substitution (`dh-sequence-dkms`), verified resolved
+  to 1.6.9+4+g46cc20e6 in the M11 VM build. The wrapper `MODULE_VERSION`
+  1.6.9 difference is intentional (`ethercat-dkms.README.Debian`).
